@@ -109,14 +109,18 @@ function App({mapStyle = MAP_STYLE}) {
     let startTimeMs = performance.now();
 
     if (lastVideoTime !== webcamRef.current.video.currentTime) {
-      lastVideoTime = webcamRef.current.video.currentTime;
+      lastVideoTime = webcamRef.current.video.currentTime;  
       results = await detector.detectForVideo(webcamRef.current.video, startTimeMs);
     }
 
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     if (results?.landmarks && results?.landmarks.length > 0) {
       for (const landmarks of results.landmarks) {
+        // Draw mirrored hands and connectors        
+        ctx.translate(canvasRef.current.width, 0);
+        ctx.scale(-1, 1);
         drawConnectors(ctx, landmarks, HAND_CONNECTIONS, {color: `rgba(0, 0, 0, 0.1)`, lineWidth: 10});
+        
         const fingerLandmarks = [
           landmarks[4], // Thumb 
           landmarks[8], // Index finger
@@ -131,6 +135,8 @@ function App({mapStyle = MAP_STYLE}) {
           radius: 10
         }
         drawLandmarks(ctx, fingerLandmarks, landmarksStyle);
+        ctx.translate(canvasRef.current.width, 0);
+        ctx.scale(-1, 1);
       }
 
       // Use only one hand to control the map
@@ -393,6 +399,7 @@ function App({mapStyle = MAP_STYLE}) {
           <Webcam 
             ref={webcamRef} 
             id='webcam' 
+            mirrored={true}
           />
         </div>
 
