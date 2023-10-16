@@ -221,18 +221,18 @@ function App({mapStyle = MAP_STYLE}) {
 
         if (middleThumbDistance < middleThumbthreshold) {
           const currentPositionZoom = {
-            "z": (thumbFinger.z + middleFinger.z) / 2,
+            "y": (thumbFinger.y + middleFinger.y) / 2,
           }
 
           // Draw a reference arc to indicate the map is being zoomed
-          drawArc({x: 0.5 * canvasRef.current.width, y: 0.5 * canvasRef.current.height}, 50, Math.PI, 2 * Math.PI)
+          drawArc({x: 0.5 * canvasRef.current.width, y: 0.5 * canvasRef.current.height}, 100, Math.PI, 2 * Math.PI)
 
           // Save the initial coordinates where the fingers are together
           if (initialPositionZoom === undefined) {
             console.log("START TO ZOOM THE MAP")
             console.log("initialPosition", initialPositionZoom)
             initialPositionZoom = {
-              "z": (thumbFinger.z + middleFinger.z) / 2,
+              "y": (thumbFinger.y + middleFinger.y) / 2,
             }
             cumulatedZ = 0;
           } else {
@@ -246,20 +246,22 @@ function App({mapStyle = MAP_STYLE}) {
 
           // Draw a circle with a radius that depends on the zoom
           cumulatedZ += dz;
-          let arc_radius = (50 * (1 + cumulatedZ * 20)) < 0 ? 0 : 50 * (1 + cumulatedZ * 20);
-          drawArc({x: 0.5 * canvasRef.current.width, y: 0.5 * canvasRef.current.height}, arc_radius, Math.PI,  2* Math.PI)
+          let diffRadius = 100 * (1 + cumulatedZ * 10);
+          drawArc({x: 0.5 * canvasRef.current.width, y: 0.5 * canvasRef.current.height}, 
+            diffRadius < 0 ? 0 : diffRadius,
+             Math.PI,  2* Math.PI)
 
           // Update the map viewState
           setViewState({
             longitude: viewState.longitude,
             latitude:  viewState.latitude, 
-            zoom: viewState.zoom + dz * 25,
+            zoom: viewState.zoom + dz * 15,
             pitch: viewState.pitch,
             bearing: viewState.bearing
           });
 
           // Reset the initial position
-          initialPositionZoom.z = currentPositionZoom.z
+          initialPositionZoom.y = currentPositionZoom.y
         }
         else {
           console.log("STOP TO ZOOM THE MAP")
