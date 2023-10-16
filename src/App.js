@@ -186,21 +186,18 @@ function App({mapStyle = MAP_STYLE}) {
           }
 
           // Calculate the distance between the current position and the initial position
-          let dx2 = currentPosition.x - initialPosition.x;
-          let dy2 = currentPosition.y - initialPosition.y;
+          let alpha = 0.8;
+          let dx2 = initialPosition.x - (initialPosition.x * alpha + currentPosition.x * (1 - alpha));
+          let dy2 = initialPosition.y - (initialPosition.y * alpha + currentPosition.y * (1 - alpha));
 
           // if absolute value of dx2 or dy2 is less than -1e-3 then do not move the map
-          if (Math.abs(dx2) < 1e-3 || Math.abs(dy2) < 1e-3) {
-            dx2 = 0; dy2 = 0;
-          }
-
-          // Smooth the movement
-          const smooth = 0.5;
+          dx2 = (Math.abs(dx2) < 1e-3) ? 0 : dx2;
+          dy2 = (Math.abs(dy2) < 1e-3) ? 0 : dy2;
 
           // Update the map viewState
           setViewState({
-            longitude: viewState.longitude + dx2 * smooth,
-            latitude:  viewState.latitude - dy2 * smooth,
+            longitude: viewState.longitude - dx2,
+            latitude:  viewState.latitude - dy2,
             zoom: viewState.zoom,
             pitch: viewState.pitch,
             bearing: viewState.bearing
@@ -240,8 +237,9 @@ function App({mapStyle = MAP_STYLE}) {
           }
 
           // Calculate the distance between the current position and the initial position
-          let dz = initialPositionZoom.z -  currentPositionZoom.z;
-          dz = (Math.abs(dz) < 1e-2) ? 0 : dz;
+          let alpha = 0.8;
+          let dz = initialPositionZoom.y -  (initialPositionZoom.y * alpha + currentPositionZoom.y * (1 - alpha));
+          dz = (Math.abs(dz) < 1e-3) ? 0 : dz;
           console.log("dz", dz)
 
           // Draw a circle with a radius that depends on the zoom
