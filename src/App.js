@@ -10,10 +10,11 @@ import { HAND_CONNECTIONS } from '@mediapipe/hands';
 import DeckGL from '@deck.gl/react';
 import { H3HexagonLayer } from '@deck.gl/geo-layers';
 import Map from 'react-map-gl';
+import maplibregl from 'maplibre-gl';
 
 import { useInterval } from './goodies.js';
 
-const MAPBOX_ACCESS_TOKEN = process.env.REACT_APP_MAPBOX_ACCESS_TOKEN;
+const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json';
 
 // Viewport settings
 const INITIAL_VIEW_STATE = {
@@ -45,7 +46,7 @@ let initialPositionBearing;
 const thumbPinkythreshold = 0.1;
 let initialPositionPitch;
 
-function App() {
+function App({mapStyle = MAP_STYLE}) {
   const webcamRef = useRef();
   const canvasRef = useRef();
   const mapRef = useRef();
@@ -411,14 +412,7 @@ function App() {
           controller={true}
           layers={layers} 
         >
-          <Map 
-            reuseMaps
-            mapStyle="mapbox://styles/mapbox/streets-v9" 
-            mapboxAccessToken={MAPBOX_ACCESS_TOKEN}
-            preventStyleDiffing={true} 
-          >
-          </Map>
-
+          <Map reuseMaps mapLib={maplibregl} mapStyle={mapStyle} preventStyleDiffing={true} />
         </DeckGL>
       
     </div>
