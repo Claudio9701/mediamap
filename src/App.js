@@ -88,7 +88,7 @@ function App({mapStyle = MAP_STYLE}) {
 
   useInterval(() => {
     detectHands();
-  }, 100);
+  }, 16);
 
   const detectHands = async () => {  
     if (detector === '') {
