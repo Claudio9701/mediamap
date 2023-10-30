@@ -1,20 +1,20 @@
 import './App.css';
 
 import React, { useState, useEffect, useRef } from 'react';
-import Webcam from "react-webcam";
+import Webcam from 'react-webcam';
 
-import { HandLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
+import { HandLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
 import { HAND_CONNECTIONS } from '@mediapipe/hands';
 
 import DeckGL from '@deck.gl/react';
 import { H3HexagonLayer } from '@deck.gl/geo-layers';
+import { BASEMAP } from '@deck.gl/carto';
 import Map from 'react-map-gl';
 import maplibregl from 'maplibre-gl';
+import { latLngToCell } from 'h3-js';
 
 import { useInterval } from './goodies.js';
-
-const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json';
 
 // Viewport settings
 const INITIAL_VIEW_STATE = {
@@ -46,27 +46,16 @@ let initialPositionBearing;
 const thumbPinkythreshold = 0.1;
 let initialPositionPitch;
 
-function App({mapStyle = MAP_STYLE}) {
+let pointerPosition;
+let pointAdded = undefined;
+
+function App() {
   const webcamRef = useRef();
   const canvasRef = useRef();
   const mapRef = useRef();
   const [detector, setDetector] = useState('');
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
-
-  const layers = [
-    new H3HexagonLayer({
-      id: 'H3HexagonLayer',
-      data: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/sf.h3cells.json',
-      elevationScale: 20,
-      extruded: true,
-      filled: true,
-      getElevation: d => d.count,
-      getFillColor: d => [255, (1 - d.count / 500) * 255, 0],
-      getHexagon: d => d.hex,
-      wireframe: false,
-      pickable: true,
-    })
-  ];
+  const [layers, setLayers] = useState([]);
   
   useEffect(() => {
     const createHandLandmarker = async () => {
@@ -84,6 +73,21 @@ function App({mapStyle = MAP_STYLE}) {
       setDetector(handLandmarker);
     };
     createHandLandmarker();
+    setLayers([
+      // TEST DATA FOR SAN FRANCISCO
+      new H3HexagonLayer({
+        id: 'H3HexagonLayer',
+        data: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/sf.h3cells.json',
+        elevationScale: 20,
+        extruded: true,
+        filled: true,
+        getElevation: d => d.count,
+        getFillColor: d => [255, (1 - d.count / 500) * 255, 255],
+        getHexagon: d => d.hex,
+        wireframe: false,
+        pickable: true,
+      }),
+    ])
   }, []);
 
   useInterval(() => {
@@ -381,6 +385,44 @@ function App({mapStyle = MAP_STYLE}) {
           console.log("STOP TO CHANGE PITCH")
           initialPositionPitch = undefined;
         }
+
+        // Add 3D object with detections
+        const indexMiddleDistance = getDistance(indexFinger, middleFinger);
+        if (indexMiddleDistance < indexThumbthreshold) {
+          // Use the initial coordinates where the fingers are together
+          if (pointerPosition === undefined) {
+            console.log("START TO ADD LEGO DATA")
+            // Make a white text to indicate a point is being added
+            ctx.font = "30px Arial";
+            ctx.fillStyle = "white";
+            ctx.textAlign = "center";
+            ctx.fillText("Adding Lego Data...", canvasRef.current.width/2, 50);
+
+            // Get current position of the two index fingers
+            const currentPosition = {
+              "x": (indexFinger.x + middleFinger.x) / 2,
+              "y": (indexFinger.y + middleFinger.y) / 2,
+            }
+            // Scale to the window size
+            let pointerPosition = {
+              clientX: (1 - currentPosition.x) * window.innerWidth,
+              clientY: currentPosition.y * window.innerHeight,
+            }
+            // Simulate a click event with the pointer position
+            if (pointAdded === undefined && layers !== undefined) {
+              let evt = new PointerEvent('pointerdown', pointerPosition);
+              document.getElementById("map-wrapper").dispatchEvent(evt);
+              let evt2 = new PointerEvent('pointerup', pointerPosition);
+              window.dispatchEvent(evt2);
+              // Set pointAdded to true to avoid adding multiple points
+              pointAdded = true;
+            }
+          } 
+        }
+        else {
+          pointAdded = undefined;
+          pointerPosition = undefined;
+        }
       }
     }
   };
@@ -416,12 +458,36 @@ function App({mapStyle = MAP_STYLE}) {
           ref={mapRef}
           viewState={viewState}
           onViewStateChange={({viewState}) => setViewState(viewState)}
-          controller={true}
+          controller={{doubleClickZoom: false}} // Avoid infinite zoom
           layers={layers} 
+          onClick={(e) => {
+            console.log("CLICKED", e);
+            if (e.coordinate !== undefined) {
+            // Convert a lat/lng point to a hexagon index at resolution 8
+            const h3Index = latLngToCell(e.coordinate[1], e.coordinate[0], 8);
+            // Get randm value between 0 and 1
+            const randomValue = Math.random();
+            let hexagonData = [{hex: h3Index, count: 250 * randomValue}];
+            // Add a new layer with the hexagon data
+            setLayers([
+              ...layers,
+              new H3HexagonLayer({
+                id: `H3HexagonLayer-${layers.length}`,
+                data: hexagonData,
+                elevationScale: 20,
+                extruded: true,
+                filled: true,
+                getElevation: d => d.count,
+                getFillColor: d => [255, (1 - d.count / 250) * 255, 255],
+                getHexagon: d => d.hex,
+                wireframe: false,
+                pickable: true,
+              })
+            ]);
+          }}}
         >
-          <Map reuseMaps mapLib={maplibregl} mapStyle={mapStyle} preventStyleDiffing={true} />
+          <Map reuseMaps mapLib={maplibregl} mapStyle={BASEMAP.DARK_MATTER} preventStyleDiffing={true} />
         </DeckGL>
-      
     </div>
   )
 }
