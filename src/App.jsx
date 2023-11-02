@@ -16,6 +16,11 @@ import { latLngToCell } from 'h3-js';
 
 import { useInterval } from './goodies.js';
 
+// Roboflow settings
+const PUBLISHABLE_ROBOFLOW_API_KEY = "rf_65Ue4jkP7ARYPi42T25B2cPbRmS2";
+const PROJECT_URL = "lego-bricks-uwgtj";
+const MODEL_VERSION = "1";
+
 // Viewport settings
 const INITIAL_VIEW_STATE = {
   longitude: -122.41669,
@@ -46,9 +51,6 @@ let initialPositionBearing;
 const thumbPinkythreshold = 0.1;
 let initialPositionPitch;
 
-let pointerPosition;
-let pointAdded = undefined;
-
 function App() {
   const webcamRef = useRef();
   const canvasRef = useRef();
@@ -56,7 +58,91 @@ function App() {
   const [detector, setDetector] = useState('');
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [layers, setLayers] = useState([]);
-  
+
+  var inferRunning;
+  var model;
+
+  const startInfer = () => {
+    inferRunning = true;
+    window.roboflow
+      .auth({
+        publishable_key: PUBLISHABLE_ROBOFLOW_API_KEY,
+      })
+      .load({
+        model: PROJECT_URL,
+        version: MODEL_VERSION,
+        onMetadata: function (m) {
+          console.log("model loaded");
+        },
+      })
+      .then((model) => {
+        setInterval(() => {
+          if (inferRunning) detect(model);
+        }, 10);
+      });
+  };
+
+  useEffect(startInfer, []);
+
+  const detect = async (model) => {
+    // Check data is available
+    if (
+      typeof webcamRef.current !== "undefined" &&
+      webcamRef.current !== null &&
+      webcamRef.current.video.readyState === 4
+    ) {
+      const videoWidth = webcamRef.current.video.videoWidth;
+      const videoHeight = webcamRef.current.video.videoHeight;
+
+      webcamRef.current.video.width = videoWidth;
+      webcamRef.current.video.height = videoHeight;
+
+      const detections = await model.detect(webcamRef.current.video);
+
+      drawBoxes(detections);
+    }
+  };
+
+  const drawBoxes = (detections) => {
+    detections.forEach((row) => {
+      console.log("DETECTION", row);
+      if (true) {
+        //video
+        var temp = row.bbox;
+        temp.class = row.class;
+        temp.color = row.color;
+        temp.confidence = row.confidence;
+        row = temp;
+      }
+
+      if (row.confidence < 0) return;
+
+      //dimensions
+      var x = row.x - row.width / 2;
+      var y = row.y - row.height / 2;
+      var w = row.width;
+      var h = row.height;
+
+      // Get current position of the two index fingers
+      const currentPosition = {
+        "x": row.x,
+        "y": row.y
+      }
+      // Scale to the window size
+      let pointerPosition = {
+        clientX: row.x,
+        clientY: row.y,
+      }
+      // Simulate a click event with the pointer position
+      if (layers !== undefined) {
+        let evt = new PointerEvent('pointerdown', pointerPosition);
+        document.getElementById("map-wrapper").dispatchEvent(evt);
+        let evt2 = new PointerEvent('pointerup', pointerPosition);
+        window.dispatchEvent(evt2);
+      }
+    });
+  };
+
   useEffect(() => {
     const createHandLandmarker = async () => {
       const vision = await FilesetResolver.forVisionTasks(
@@ -94,7 +180,7 @@ function App() {
     detectHands();
   }, 16);
 
-  const detectHands = async () => {  
+  const detectHands = async () => {
     if (detector === '') {
       console.log("Loading model...");
       return;
@@ -113,7 +199,7 @@ function App() {
     let startTimeMs = performance.now();
 
     if (lastVideoTime !== webcamRef.current.video.currentTime) {
-      lastVideoTime = webcamRef.current.video.currentTime;  
+      lastVideoTime = webcamRef.current.video.currentTime;
       results = await detector.detectForVideo(webcamRef.current.video, startTimeMs);
     }
 
@@ -123,8 +209,8 @@ function App() {
         // Draw mirrored hands and connectors        
         ctx.translate(canvasRef.current.width, 0);
         ctx.scale(-1, 1);
-        drawConnectors(ctx, landmarks, HAND_CONNECTIONS, {color: `rgba(0, 0, 0, 0.1)`, lineWidth: 10});
-        
+        drawConnectors(ctx, landmarks, HAND_CONNECTIONS, { color: `rgba(0, 0, 0, 0.1)`, lineWidth: 10 });
+
         const fingerLandmarks = [
           landmarks[4], // Thumb 
           landmarks[8], // Index finger
@@ -151,7 +237,7 @@ function App() {
         ctx.stroke();
         ctx.save();
       }
-      
+
       const drawArc = (point, radius, startAngle, EndAngle) => {
         ctx.beginPath();
         ctx.arc(point.x, point.y, radius, startAngle, EndAngle);
@@ -160,10 +246,10 @@ function App() {
       }
 
       const drawCenterCross = () => {
-        drawLine({x: 0.5, y: 0.48}, {x: 0.5, y: 0.52});
-        drawLine({x: 0.49, y: 0.5}, {x: 0.51, y: 0.5});
+        drawLine({ x: 0.5, y: 0.48 }, { x: 0.5, y: 0.52 });
+        drawLine({ x: 0.49, y: 0.5 }, { x: 0.51, y: 0.5 });
       }
-      
+
       if (results.landmarks.length === 1) {
         const indexFinger = results.landmarks[0][8];
         const thumbFinger = results.landmarks[0][4];
@@ -173,7 +259,7 @@ function App() {
 
         // If fingers are together, move the map
         if (indexThumbdistance < indexThumbthreshold) {
-          
+
           // Draw a center cross to indicate the map is being moved
           drawCenterCross();
 
@@ -207,7 +293,7 @@ function App() {
           // Update the map viewState
           setViewState({
             longitude: viewState.longitude - dx2,
-            latitude:  viewState.latitude - dy2,
+            latitude: viewState.latitude - dy2,
             zoom: viewState.zoom,
             pitch: viewState.pitch,
             bearing: viewState.bearing
@@ -232,7 +318,7 @@ function App() {
           }
 
           // Draw a reference arc to indicate the map is being zoomed
-          drawArc({x: 0.5 * canvasRef.current.width, y: 0.5 * canvasRef.current.height}, 100, Math.PI, 2 * Math.PI)
+          drawArc({ x: 0.5 * canvasRef.current.width, y: 0.5 * canvasRef.current.height }, 100, Math.PI, 2 * Math.PI)
 
           // Save the initial coordinates where the fingers are together
           if (initialPositionZoom === undefined) {
@@ -248,21 +334,21 @@ function App() {
 
           // Calculate the distance between the current position and the initial position
           let alpha = 0.8;
-          let dz = initialPositionZoom.y -  (initialPositionZoom.y * alpha + currentPositionZoom.y * (1 - alpha));
+          let dz = initialPositionZoom.y - (initialPositionZoom.y * alpha + currentPositionZoom.y * (1 - alpha));
           dz = (Math.abs(dz) < 1e-3) ? 0 : dz;
           console.log("dz", dz)
 
           // Draw a circle with a radius that depends on the zoom
           cumulatedZ += dz;
           let diffRadius = 100 * (1 + cumulatedZ * 10);
-          drawArc({x: 0.5 * canvasRef.current.width, y: 0.5 * canvasRef.current.height}, 
+          drawArc({ x: 0.5 * canvasRef.current.width, y: 0.5 * canvasRef.current.height },
             diffRadius < 0 ? 0 : diffRadius,
-             Math.PI,  2* Math.PI)
+            Math.PI, 2 * Math.PI)
 
           // Update the map viewState
           setViewState({
             longitude: viewState.longitude,
-            latitude:  viewState.latitude, 
+            latitude: viewState.latitude,
             zoom: viewState.zoom + dz * 15,
             pitch: viewState.pitch,
             bearing: viewState.bearing
@@ -282,7 +368,7 @@ function App() {
         const thumbRingDistance = getDistance(thumbFinger, ringFinger);
 
         if (thumbRingDistance < thumbRingthreshold) {
-          
+
           // Get current position of the two index fingers
           const currentPositionBearing = {
             "x": (thumbFinger.x + ringFinger.x) / 2,
@@ -290,7 +376,7 @@ function App() {
           }
 
           // Draw a reference arc to indicate the map is being rotated
-          drawArc({x: 0.5 * canvasRef.current.width, y: 0.5 * canvasRef.current.height}, 50, -1.6 * Math.PI, -1.4 * Math.PI)
+          drawArc({ x: 0.5 * canvasRef.current.width, y: 0.5 * canvasRef.current.height }, 50, -1.6 * Math.PI, -1.4 * Math.PI)
 
           // Save the initial coordinates where the fingers are together
           if (initialPositionBearing === undefined) {
@@ -313,16 +399,16 @@ function App() {
           // Draw an arc segment that depends on the bearing
           let diffAngle = -1.5 * Math.PI + dx3 * 10;
           drawArc(
-            {x: 0.5 * canvasRef.current.width, y: 0.5 * canvasRef.current.height}, 
-            50, 
-            (diffAngle > -1.5 * Math.PI) ? -1.5 * Math.PI : diffAngle, 
+            { x: 0.5 * canvasRef.current.width, y: 0.5 * canvasRef.current.height },
+            50,
+            (diffAngle > -1.5 * Math.PI) ? -1.5 * Math.PI : diffAngle,
             (diffAngle < -1.5 * Math.PI) ? -1.5 * Math.PI : diffAngle,
           )
 
           // Update the map viewState
           setViewState({
             longitude: viewState.longitude,
-            latitude:  viewState.latitude, 
+            latitude: viewState.latitude,
             zoom: viewState.zoom,
             pitch: viewState.pitch,
             bearing: viewState.bearing + dx3 * 10
@@ -346,7 +432,7 @@ function App() {
           }
 
           // Draw a vertical line to indicate the map is being pitched
-          drawLine({x: 0.5, y: 0.48}, {x: 0.5, y: 0.52});
+          drawLine({ x: 0.5, y: 0.48 }, { x: 0.5, y: 0.52 });
 
           // Save the initial coordinates where the fingers are together
           if (initialPositionPitch === undefined) {
@@ -368,14 +454,14 @@ function App() {
           // Draw a vertical line that depends on the pitch
           let diffPitch = 0.5 * (1 + dy3);
           drawLine(
-            {x: 0.5, y: (diffPitch > 0.5) ? 0.5 : diffPitch}, 
-            {x: 0.5, y: (diffPitch < 0.5) ? 0.5 : diffPitch}
+            { x: 0.5, y: (diffPitch > 0.5) ? 0.5 : diffPitch },
+            { x: 0.5, y: (diffPitch < 0.5) ? 0.5 : diffPitch }
           );
 
           // Update the map viewState
           setViewState({
             longitude: viewState.longitude,
-            latitude:  viewState.latitude, 
+            latitude: viewState.latitude,
             zoom: viewState.zoom,
             pitch: viewState.pitch + dy3 * 10,
             bearing: viewState.bearing
@@ -385,94 +471,62 @@ function App() {
           console.log("STOP TO CHANGE PITCH")
           initialPositionPitch = undefined;
         }
-
-        // Add 3D object with detections
-        const indexMiddleDistance = getDistance(indexFinger, middleFinger);
-        if (indexMiddleDistance < indexThumbthreshold) {
-          // Use the initial coordinates where the fingers are together
-          if (pointerPosition === undefined) {
-            console.log("START TO ADD LEGO DATA")
-            // Make a white text to indicate a point is being added
-            ctx.font = "30px Arial";
-            ctx.fillStyle = "white";
-            ctx.textAlign = "center";
-            ctx.fillText("Adding Lego Data...", canvasRef.current.width/2, 50);
-
-            // Get current position of the two index fingers
-            const currentPosition = {
-              "x": (indexFinger.x + middleFinger.x) / 2,
-              "y": (indexFinger.y + middleFinger.y) / 2,
-            }
-            // Scale to the window size
-            let pointerPosition = {
-              clientX: (1 - currentPosition.x) * window.innerWidth,
-              clientY: currentPosition.y * window.innerHeight,
-            }
-            // Simulate a click event with the pointer position
-            if (pointAdded === undefined && layers !== undefined) {
-              let evt = new PointerEvent('pointerdown', pointerPosition);
-              document.getElementById("map-wrapper").dispatchEvent(evt);
-              let evt2 = new PointerEvent('pointerup', pointerPosition);
-              window.dispatchEvent(evt2);
-              // Set pointAdded to true to avoid adding multiple points
-              pointAdded = true;
-            }
-          } 
-        }
-        else {
-          pointAdded = undefined;
-          pointerPosition = undefined;
-        }
       }
     }
   };
 
   return (
     <div className="App">
-        <div className="container">
-          <div className="title">
-            <p>Map Control with Hand Gestures 👌</p>
-            {
-              detector === '' ? 
-                <p style={{color: '#ff0000'}}>Loading...</p> : 
-                <p style={{color: '#00ff00'}}>Model Running </p>
-            }
-          </div>
-          <Webcam 
-            ref={webcamRef} 
-            id='webcam' 
-            mirrored={true}
-          />
+      <div className="container">
+        <div className="title">
+          <p>Map Control with Hand Gestures 👌</p>
+          {
+            detector === '' ?
+              <p style={{ color: '#ff0000' }}>Loading...</p> :
+              <p style={{ color: '#00ff00' }}>Model Running </p>
+          }
         </div>
-
-        <canvas 
-          ref={canvasRef} 
-          id='handsLandmarks'
-          // increase canvas resolution with window size
-          width={window.innerWidth}
-          height={window.innerHeight}
+        <Webcam
+          ref={webcamRef}
+          id='webcam'
+          mirrored={true}
         />
+      </div>
 
-        <DeckGL
-          id="map"
-          ref={mapRef}
-          viewState={viewState}
-          onViewStateChange={({viewState}) => setViewState(viewState)}
-          controller={{doubleClickZoom: false}} // Avoid infinite zoom
-          layers={layers} 
-          onClick={(e) => {
-            console.log("CLICKED", e);
-            if (e.coordinate !== undefined) {
+      <canvas
+        ref={canvasRef}
+        id='handsLandmarks'
+        // increase canvas resolution with window size
+        width={window.innerWidth}
+        height={window.innerHeight}
+      />
+
+      <DeckGL
+        id="map"
+        ref={mapRef}
+        viewState={viewState}
+        onViewStateChange={({ viewState }) => setViewState(viewState)}
+        controller={{ doubleClickZoom: false }} // Avoid infinite zoom
+        layers={layers}
+        onClick={(e) => {
+          console.log("CLICKED", e);
+          if (e.coordinate !== undefined) {
             // Convert a lat/lng point to a hexagon index at resolution 8
             const h3Index = latLngToCell(e.coordinate[1], e.coordinate[0], 8);
+
+            // check if using the h3Index and layers id
+            const layer = layers.find(l => l.props.id === `H3HexagonLayer-${h3Index}`);
+            // Do not add a new layer if the hexagon already exists
+            if (layer !== undefined) return;
+
             // Get randm value between 0 and 1
             const randomValue = Math.random();
-            let hexagonData = [{hex: h3Index, count: 250 * randomValue}];
+            let hexagonData = [{ hex: h3Index, count: 250 * randomValue }];
             // Add a new layer with the hexagon data
             setLayers([
               ...layers,
               new H3HexagonLayer({
-                id: `H3HexagonLayer-${layers.length}`,
+                id: `H3HexagonLayer-${h3Index}`,
                 data: hexagonData,
                 elevationScale: 20,
                 extruded: true,
@@ -484,10 +538,11 @@ function App() {
                 pickable: true,
               })
             ]);
-          }}}
-        >
-          <Map reuseMaps mapLib={maplibregl} mapStyle={BASEMAP.DARK_MATTER} preventStyleDiffing={true} />
-        </DeckGL>
+          }
+        }}
+      >
+        <Map reuseMaps mapLib={maplibregl} mapStyle={BASEMAP.DARK_MATTER} preventStyleDiffing={true} />
+      </DeckGL>
     </div>
   )
 }
