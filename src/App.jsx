@@ -341,7 +341,7 @@ function App() {
           lineWidth: 5,
           radius: 10
         }
-        drawLandmarks(ctx, fingerLandmarks, landmarksStyle);
+        window.drawLandmarks(ctx, fingerLandmarks, landmarksStyle);
         ctx.translate(canvasRef.current.width, 0);
         ctx.scale(-1, 1);
       }
