@@ -23,9 +23,9 @@ const MODEL_VERSION = "1";
 
 // Viewport settings
 const INITIAL_VIEW_STATE = {
-  longitude: -122.41669,
-  latitude: 37.7853,
-  zoom: 10,
+  longitude: 2.236577631535022,
+  latitude: 48.896978835661464,
+  zoom: 16,
   pitch: 40,
   bearing: 0
 };
@@ -53,6 +53,7 @@ let initialPositionPitch;
 
 function App() {
   const webcamRef = useRef();
+  const basemapRef = useRef();
   const canvasRef = useRef();
   const mapRef = useRef();
   const [detector, setDetector] = useState('');
@@ -91,19 +92,121 @@ function App() {
       webcamRef.current !== null &&
       webcamRef.current.video.readyState === 4
     ) {
-      const videoWidth = webcamRef.current.video.videoWidth;
-      const videoHeight = webcamRef.current.video.videoHeight;
+      const videoWidth = canvasRef.current.width;
+      const videoHeight = canvasRef.current.width;
 
-      webcamRef.current.video.width = videoWidth;
-      webcamRef.current.video.height = videoHeight;
+      // webcamRef.current.video.width = videoWidth;
+      // webcamRef.current.video.height = videoHeight;
 
       const detections = await model.detect(webcamRef.current.video);
 
-      drawBoxes(detections);
+      drawHexs(detections);
+
+      // var ctx = videoCanvasRef.current.getContext("2d");
+
+      // adjustCanvas(webcamRef.current.video.width, webcamRef.current.video.height);
+      // drawBoxes(detections, ctx);
+
     }
   };
 
-  const drawBoxes = (detections) => {
+  // const adjustCanvas = (w, h) => {
+  //   console.log("ADJUST CANVAS")
+  //   videoCanvasRef.current.width = w
+  //   videoCanvasRef.current.height = h
+
+  //   videoCanvasRef.current.style.width = w
+  //   videoCanvasRef.current.style.height = h
+
+  //   // DRAW A CROSS IN THE CANVAS
+  //   ctx = videoCanvasRef.current.getContext("2d");
+  //   ctx.beginPath();
+  //   ctx.moveTo(0, 0);
+  //   ctx.lineTo(w, h);
+  //   ctx.stroke();
+  //   ctx.beginPath();
+  //   ctx.moveTo(w, 0);
+  //   ctx.lineTo(0, h);
+  //   ctx.stroke();
+
+  // };
+
+
+  // const drawBoxes = (detections, ctx) => {
+  //   console.log("DRAW BOXES")
+  //   ctx.clearRect(0, 0, videoCanvasRef.current.width, videoCanvasRef.current.height);
+  //   detections.forEach((row) => {
+  //     if (true) {
+  //       //video
+  //       var temp = row.bbox;
+  //       temp.class = row.class;
+  //       temp.color = row.color;
+  //       temp.confidence = row.confidence;
+  //       row = temp;
+  //     }
+
+  //     if (row.confidence < 0) return;
+
+  //     //dimensions
+  //     var x = row.x - row.width / 2;
+  //     var y = row.y - row.height / 2;
+  //     var w = row.width;
+  //     var h = row.height;
+
+  //     //box
+  //     ctx.beginPath();
+  //     ctx.lineWidth = 1;
+  //     ctx.strokeStyle = row.color;
+  //     ctx.rect(x, y, w, h);
+  //     ctx.stroke();
+
+  //     //shade
+  //     ctx.fillStyle = "black";
+  //     ctx.globalAlpha = 0.2;
+  //     ctx.fillRect(x, y, w, h);
+  //     ctx.globalAlpha = 1.0;
+
+  //     //label
+  //     var fontColor = "black";
+  //     var fontSize = 12;
+  //     ctx.font = `${fontSize}px monospace`;
+  //     ctx.textAlign = "center";
+  //     var classTxt = row.class;
+  //     var confTxt = (row.confidence * 100).toFixed().toString() + "%";
+  //     var msgTxt = classTxt + " " + confTxt;
+  //     const textHeight = fontSize;
+  //     var textWidth = ctx.measureText(msgTxt).width;
+
+  //     if (textHeight <= h && textWidth <= w) {
+  //       ctx.strokeStyle = row.color;
+  //       ctx.fillStyle = row.color;
+  //       ctx.fillRect(
+  //         x - ctx.lineWidth / 2,
+  //         y - textHeight - ctx.lineWidth,
+  //         textWidth + 2,
+  //         textHeight + 1
+  //       );
+  //       ctx.stroke();
+  //       ctx.fillStyle = fontColor;
+  //       ctx.fillText(msgTxt, x + textWidth / 2 + 1, y - 1);
+  //     } else {
+  //       textWidth = ctx.measureText(confTxt).width;
+  //       ctx.strokeStyle = row.color;
+  //       ctx.fillStyle = row.color;
+  //       ctx.fillRect(
+  //         x - ctx.lineWidth / 2,
+  //         y - textHeight - ctx.lineWidth,
+  //         textWidth + 2,
+  //         textHeight + 1
+  //       );
+  //       ctx.stroke();
+  //       ctx.fillStyle = fontColor;
+  //       ctx.fillText(confTxt, x + textWidth / 2 + 1, y - 1);
+  //     }
+  //   });
+  // };
+
+  const drawHexs = (detections) => {
     detections.forEach((row) => {
       console.log("DETECTION", row);
       if (true) {
@@ -115,7 +218,9 @@ function App() {
         row = temp;
       }
 
-      if (row.confidence < 0) return;
+      if (row.confidence < 0.5) return;
+
+      if (row.class == "pooltable") return;
 
       //dimensions
       var x = row.x - row.width / 2;
@@ -125,13 +230,14 @@ function App() {
 
       // Get current position of the two index fingers
       const currentPosition = {
-        "x": row.x,
-        "y": row.y
+        "x": canvasRef.current.width - row.x,
+        "y": row.y,
+        "size": row.class == "base" ? 1 : 0.2,
       }
       // Scale to the window size
       let pointerPosition = {
-        clientX: row.x,
-        clientY: row.y,
+        clientX: currentPosition.x,
+        clientY: currentPosition.y,
       }
       // Simulate a click event with the pointer position
       if (layers !== undefined) {
@@ -161,19 +267,30 @@ function App() {
     createHandLandmarker();
     setLayers([
       // TEST DATA FOR SAN FRANCISCO
-      new H3HexagonLayer({
-        id: 'H3HexagonLayer',
-        data: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/sf.h3cells.json',
-        elevationScale: 20,
-        extruded: true,
-        filled: true,
-        getElevation: d => d.count,
-        getFillColor: d => [255, (1 - d.count / 500) * 255, 255],
-        getHexagon: d => d.hex,
-        wireframe: false,
-        pickable: true,
-      }),
-    ])
+      // new H3HexagonLayer({
+      //   id: 'H3HexagonLayer',
+      //   data: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/sf.h3cells.json',
+      //   elevationScale: 20,
+      //   extruded: true,
+      //   filled: true,
+      //   getElevation: d => d.count,
+      //   getFillColor: d => [255, (1 - d.count / 500) * 255, 255],
+      //   getHexagon: d => d.hex,
+      //   wireframe: false,
+      //   pickable: true,
+      // }),
+    ]);
+
+    // ADD PROJECTION MAPPING
+    var mapWraper = document.getElementById("app-wrapper")
+    window.Maptastic(mapWraper)
+    // window.Maptastic(mapRef.current.deck.canvas)
+    // window.Maptastic(canvasRef.current)
+    // Wait for the basemap to be loaded
+    // basemapRef.current.on('load', () => {
+    //   // ADD PROJECTION MAPPING
+    //   window.Maptastic(basemapRef.current.getMap()._canvas)
+    // })
   }, []);
 
   useInterval(() => {
@@ -493,57 +610,65 @@ function App() {
         />
       </div>
 
-      <canvas
-        ref={canvasRef}
-        id='handsLandmarks'
-        // increase canvas resolution with window size
-        width={window.innerWidth}
-        height={window.innerHeight}
-      />
-
-      <DeckGL
-        id="map"
-        ref={mapRef}
-        viewState={viewState}
-        onViewStateChange={({ viewState }) => setViewState(viewState)}
-        controller={{ doubleClickZoom: false }} // Avoid infinite zoom
-        layers={layers}
-        onClick={(e) => {
-          console.log("CLICKED", e);
-          if (e.coordinate !== undefined) {
-            // Convert a lat/lng point to a hexagon index at resolution 8
-            const h3Index = latLngToCell(e.coordinate[1], e.coordinate[0], 8);
-
-            // check if using the h3Index and layers id
-            const layer = layers.find(l => l.props.id === `H3HexagonLayer-${h3Index}`);
-            // Do not add a new layer if the hexagon already exists
-            if (layer !== undefined) return;
-
-            // Get randm value between 0 and 1
-            const randomValue = Math.random();
-            let hexagonData = [{ hex: h3Index, count: 250 * randomValue }];
-            // Add a new layer with the hexagon data
-            setLayers([
-              ...layers,
-              new H3HexagonLayer({
-                id: `H3HexagonLayer-${h3Index}`,
-                data: hexagonData,
-                elevationScale: 20,
-                extruded: true,
-                filled: true,
-                getElevation: d => d.count,
-                getFillColor: d => [255, (1 - d.count / 250) * 255, 255],
-                getHexagon: d => d.hex,
-                wireframe: false,
-                pickable: true,
-              })
-            ]);
-          }
-        }}
+      <div
+        id="app-wrapper"
+        style={{ width: window.innerWidth, height: window.innerHeight }}
       >
-        <Map reuseMaps mapLib={maplibregl} mapStyle={BASEMAP.DARK_MATTER} preventStyleDiffing={true} />
-      </DeckGL>
-    </div>
+
+        <canvas
+          ref={canvasRef}
+          id='handsLandmarks'
+          // increase canvas resolution with window size
+          width={window.innerWidth}
+          height={window.innerHeight}
+        />
+
+        <DeckGL
+          id="map"
+          ref={mapRef}
+          viewState={viewState}
+          onViewStateChange={({ viewState }) => setViewState(viewState)}
+          controller={{ doubleClickZoom: false }} // Avoid infinite zoom
+          layers={layers}
+          onClick={(e) => {
+            console.log("CLICKED", e);
+            if (e.coordinate !== undefined) {
+              // Convert a lat/lng point to a hexagon index at resolution 8
+              const h3Index = latLngToCell(e.coordinate[1], e.coordinate[0], 11);
+
+              // check if using the h3Index and layers id
+              const layer = layers.find(l => l.props.id === `H3HexagonLayer-${h3Index}`);
+              // Do not add a new layer if the hexagon already exists
+              if (layer !== undefined) return;
+
+              // Get randm value between 0 and 1
+              const randomValue = Math.random();
+              let hexagonData = [{ hex: h3Index, count: 2 * randomValue }];
+              // Add a new layer with the hexagon data
+              setLayers([
+                ...layers,
+                new H3HexagonLayer({
+                  id: `H3HexagonLayer-${h3Index}`,
+                  data: hexagonData,
+                  elevationScale: 20,
+                  extruded: true,
+                  filled: true,
+                  getElevation: d => d.count,
+                  getFillColor: d => [255, 255, 255],
+                  getHexagon: d => d.hex,
+                  coverage: 0.6,
+                  wireframe: false,
+                  pickable: true,
+                })
+              ]);
+            }
+          }}
+        >
+          <Map ref={basemapRef} reuseMaps mapLib={maplibregl} mapStyle={BASEMAP.DARK_MATTER} preventStyleDiffing={true} />
+        </DeckGL>
+
+      </div>
+    </div >
   )
 }
 
