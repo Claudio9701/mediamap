@@ -326,7 +326,7 @@ function App() {
         // Draw mirrored hands and connectors        
         ctx.translate(canvasRef.current.width, 0);
         ctx.scale(-1, 1);
-        drawConnectors(ctx, landmarks, HAND_CONNECTIONS, { color: `rgba(0, 0, 0, 0.1)`, lineWidth: 10 });
+        window.drawConnectors(ctx, landmarks, HAND_CONNECTIONS, { color: `rgba(0, 0, 0, 0.1)`, lineWidth: 10 });
 
         const fingerLandmarks = [
           landmarks[4], // Thumb 
