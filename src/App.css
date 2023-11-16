@@ -67,6 +67,15 @@
   z-index: 1;
 }
 
+.container #webcamCanvas {
+  position: relative;
+  top: 0px;
+  left: 0px;
+  z-index: 10;
+  pointer-events: none;
+  display: block;
+}
+
 .container .title {
   position: relative;
   top: 0px;
