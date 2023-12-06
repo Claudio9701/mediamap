@@ -1,10 +1,13 @@
-import './App.css';
+// import './App.css';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import Map from './components/Map.jsx';
 import Roboflow from './components/Roboflow.jsx';
 import ProjectionMapping from './components/ProjectionMapping.jsx';
+import Mediapipe from './components/Mediapipe.jsx';
+import Webcam from 'react-webcam';
+import { getPerspectiveTransform } from './goodies.js';
 
 const INITIAL_DATA = {
   "type": "FeatureCollection",
@@ -37462,17 +37465,141 @@ const INITIAL_DATA = {
   ]
 }
 
+const warpPerspective = (src, dst) => {
+  // Transform the src points considering to origin is at the center of an 640 by 480 image
+  src = src.map(([x, y]) => [x - 640 / 2, y - 480 / 2]);
+  dst = dst.map(([x, y]) => [x - 640 / 2, y - 480 / 2]);
+
+  return getPerspectiveTransform(...src, ...dst);
+}
+
 function App() {
   const webcamRef = useRef();
   const webcamCanvasRef = useRef();
   const mapWrapperRef = useRef();
+  const webcamCanvasParentRef = useRef();
+  const handCanvasRef = useRef();
+  const interactiveIframeRef = useRef();
+  const [layers, setLayers] = useState([]);
   const [gridData, setGridData] = useState(INITIAL_DATA);
+  const [camera2PoolMatrix, setCamera2PoolMatrix] = useState(null);
+  const [points, setPoints] = useState([]);
+  const [calibrated, setCalibrated] = useState(false);
+
+  // Handle click event
+  const handleClick = (event) => {
+    // Get clicked coordinates
+    const x = event.nativeEvent.offsetX;
+    const y = event.nativeEvent.offsetY;
+
+    // Add coordinates to points array 
+    if (points.length < 4) {
+      setPoints(prevPoints => [...prevPoints, [x, y]]);
+      // Draw points on canvas
+      const ctx = webcamCanvasRef.current.getContext("2d");
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, 2 * Math.PI);
+      ctx.fillStyle = "red";
+      ctx.fill();
+    }
+    else {
+
+      if (!calibrated) {
+
+        // console log webcam size
+        console.log("WEBCAM SIZE", webcamRef.current.video.videoHeight, webcamRef.current.video.videoWidth)
+
+
+        // Calculate perspective transformation matrix from pooltable corners to canvas corners
+        const camera_corners = [
+          [0, 0], // top left
+          [webcamRef.current.video.videoWidth, 0], // top right
+          [0, webcamRef.current.video.videoHeight], // bottom left
+          [webcamRef.current.video.videoWidth, webcamRef.current.video.videoHeight], // bottom right
+        ]
+        console.log("CAMERA CORNERS", camera_corners)
+        const M = warpPerspective(points, camera_corners);
+        console.log("PROJECT MAPPING - M", M)
+        setCamera2PoolMatrix(M);
+
+        // Modify Pool table view
+        // warpedRef.current.style.transform = `matrix3d(${M.flat().join(",")})`;
+        // warpedCanvasRef.current.style.transform = `matrix3d(${M.flat().join(",")})`;
+
+        // Modify webcam view
+        // webcamRef.current.video.style.visibility = "hidden";
+        // webcamCanvasRef.current.style.pointerEvents = "none";
+        webcamCanvasRef.current.style.transform = `matrix3d(${M.join(",")})`;
+        // Modify MediaPipe hand canvas
+        handCanvasRef.current.style.transform = `matrix3d(${M.join(",")})`;
+        // handCanvasRef.current.style.pointerEvents = "auto";
+
+        interactiveIframeRef.current.style.visibility = "visible";
+        handCanvasRef.current.style.transform = `matrix3d(${M.join(",")})`;
+
+
+        setCalibrated(true);
+
+        // console log updated img
+        console.log("IMAGE UPDATED");
+
+      }
+    }
+    console.log("points", points);
+  };
+
+  useEffect(() => {
+    var maptastic = window.Maptastic(mapWrapperRef.current);
+  }, [])
 
   return (
     <div className="App">
-      <Roboflow data={gridData} setGridData={setGridData} webcamRef={webcamRef} webcamCanvasRef={webcamCanvasRef} />
-      <Map data={gridData} mapWrapperRef={mapWrapperRef} />
-      <ProjectionMapping webcamRef={webcamRef} webcamCanvasRef={webcamCanvasRef} mapWrapperRef={mapWrapperRef} />
+
+      {/* <ProjectionMapping
+        webcamRef={webcamRef}
+        webcamCanvasRef={webcamCanvasRef}
+        mapWrapperRef={mapWrapperRef}
+        setCamera2PoolMatrix={setCamera2PoolMatrix}
+      /> */}
+
+      {/* <Map layers={layers} setLayers={setLayers} data={gridData} mapWrapperRef={mapWrapperRef} /> */}
+
+      <div ref={mapWrapperRef} style={{ display: "inline-block" }}>
+
+        <Webcam
+          ref={webcamRef}
+          id='webcam'
+          mirrored={false}
+          style={{ position: "absolute", zIndex: 1 }}
+        />
+
+        <div ref={webcamCanvasParentRef} style={{ position: "relative", zIndex: 20 }}>
+          <canvas
+            ref={webcamCanvasRef}
+            id='webcamCanvas'
+            onClick={handleClick}
+            width="640"
+            height="480"
+          />
+        </div>
+
+
+
+        {/* Add Roboflow component if calibrated is true */}
+        {/* {calibrated && <Roboflow
+          data={gridData}
+          setGridData={setGridData}
+          webcamRef={webcamRef}
+          webcamCanvasRef={webcamCanvasRef}
+          // camera2PoolMatrix={camera2PoolMatrix}
+          layers={layers}
+        />} */}
+
+
+        {/* <Mediapipe webcamRef={webcamRef} handCanvasRef={handCanvasRef} webcamCanvasRef={webcamCanvasRef} interactiveCanvasID="iframeContent" /> */}
+
+      </div>
+
     </div >
   )
 }
