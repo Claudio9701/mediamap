@@ -1,100 +1,79 @@
-import { useEffect } from 'react';
-
+import { useState } from 'react';
 import { getPerspectiveTransform } from '../goodies.js';
 
-export default function ProjectionMapping({ webcamRef, webcamCanvasRef, mapWrapperRef }) {
+const warpPerspective = (src, dst, screenWidth, screenHeight) => {
+    // Transform the src points considering to origin is at the center of an 640 by 480 image
+    src = src.map(([x, y]) => [x - screenWidth / 2, y - screenHeight / 2]);
+    dst = dst.map(([x, y]) => [x - screenWidth / 2, y - screenHeight / 2]);
 
-    if (
-        typeof webcamRef.current !== "undefined" &&
-        webcamRef.current !== null &&
-        webcamRef.current.video.readyState === 4
-    ) {
-        const clientWidth = webcamRef.current.video.clientWidth;
-        const clientHeight = webcamRef.current.video.clientHeight;
+    return getPerspectiveTransform(...src, ...dst);
+}
 
-        adjustCanvas(clientWidth, clientHeight);
+const ProjectionMapping = ({ webcamRef, webcamCanvasRef, appWrapperRef, cameraToSurfaceMatrix, setCameraToSurfaceMatrix, calibrated, setCalibrated }) => {
+    let originPoints = [];
 
-        var videoCtx = webcamCanvasRef.current.getContext('2d');
-
-        videoCtx.clearRect(0, 0, webcamCanvasRef.current.width, webcamCanvasRef.current.height);
-
-        // box
-        var webcamCanvasCorners = [
-            [0, 0], // top left
-            [0, webcamCanvasRef.current.height], // bottom left
-            [webcamCanvasRef.current.width, webcamCanvasRef.current.height], // bottom right
-            [webcamCanvasRef.current.width, 0], // top right
-        ]
-
-        videoCtx.beginPath();
-        videoCtx.lineWidth = 5;
-        videoCtx.strokeStyle = "blue";
-        videoCtx.rect(0, 0, webcamCanvasRef.current.width, webcamCanvasRef.current.height);
-        videoCtx.stroke();
-
-        // Draw pooltable borders
-        var pooltableCorners = [
-            [30, 15], // top left
-            [14, 62], // bottom left
-            [128, 65], // bottom right
-            [115, 17], // top right
-        ]
-        for (let i = 0; i < pooltableCorners.length - 1; i++) {
-            videoCtx.beginPath();
-            videoCtx.lineWidth = 2;
-            videoCtx.strokeStyle = "red";
-            videoCtx.moveTo(pooltableCorners[i][0], pooltableCorners[i][1]);
-            videoCtx.lineTo(pooltableCorners[i + 1][0], pooltableCorners[i + 1][1]);
-            videoCtx.stroke();
-        }
-
-        videoCtx.beginPath();
-        videoCtx.lineWidth = 2;
-        videoCtx.strokeStyle = "red";
-        videoCtx.moveTo(pooltableCorners[pooltableCorners.length - 1][0], pooltableCorners[pooltableCorners.length - 1][1]);
-        videoCtx.lineTo(pooltableCorners[0][0], pooltableCorners[0][1]);
-        videoCtx.stroke();
-
-        // Add 0, 1 to all points to make them homogeneous
-        const op = [
-            [webcamCanvasCorners[0][0], webcamCanvasCorners[0][1], 0, 1],
-            [webcamCanvasCorners[1][0], webcamCanvasCorners[1][1], 0, 1],
-            [webcamCanvasCorners[2][0], webcamCanvasCorners[2][1], 0, 1],
-            [webcamCanvasCorners[3][0], webcamCanvasCorners[3][1], 0, 1],
-        ]
-        const np = [
-            [pooltableCorners[0][0], pooltableCorners[0][1], 0, 1],
-            [pooltableCorners[1][0], pooltableCorners[1][1], 0, 1],
-            [pooltableCorners[2][0], pooltableCorners[2][1], 0, 1],
-            [pooltableCorners[3][0], pooltableCorners[3][1], 0, 1],
-        ]
-        // Calculate perspective transformation matrix from pooltable corners to canvas corners
-        const M = getPerspectiveTransform(...op, ...np);
-        console.log("M", M)
+    const updateTransform = () => {
+        webcamRef.current.video.style.visibility = "hidden";
+        webcamCanvasRef.current.style.transform = `matrix3d(${cameraToSurfaceMatrix.join(",")})`;
+        handCanvasRef.current.style.transform = `matrix3d(${cameraToSurfaceMatrix.join(",")})`;
     }
 
-    const adjustCanvas = (w, h) => {
-        console.log("ADJUST CANVAS")
-        webcamCanvasRef.current.width = w;
-        webcamCanvasRef.current.height = h;
+    // Maptastic allow to apply the projection to surface transformation matrix interactively
+    var maptastic = window.Maptastic(appWrapperRef.current);
 
-        webcamCanvasRef.current.style.width = w;
-        webcamCanvasRef.current.style.height = h;
-    };
+    // Load camera to surface transformation matrix from LocalStorage if it exists
+    const storedMatrix = JSON.parse(localStorage.getItem("cameraToSurfaceMatrix"));
+    console.log("STOREDMATRIX", storedMatrix)
+    if (storedMatrix !== null) {
+        console.log("SETTING STOREDMATRIX")
+        setCameraToSurfaceMatrix(storedMatrix);
+        updateTransform();
+        setCalibrated(true);
+    } else {
+        console.log("NOT SETTING STOREDMATRIX");
+    }
 
-    useEffect(() => {
-        // Add projection mapping
-        var maptastic = window.Maptastic(mapWrapperRef.current);
-    }, []);
+    const createOriginalPoint = (event) => {
+        console.log("EVENT", event)
+        console.log()
+        console.log("CALIBRATED", calibrated)
+        if (!calibrated) {
+            // Get clicked coordinates
+            const x = event.nativeEvent.offsetX;
+            const y = event.nativeEvent.offsetY;
 
-    return (
-        <img
-            id="warpedImage"
-            src="/lego_20231024-093640.jpg"
-            alt="warpedImage"
-            style={{
-                transform: 'matrix3d(' + M.join(',') + ')' // m is the 4x4 matrix
-            }}
-        />
-    )
-}
+            // Add coordinates to points array 
+            if (originPoints.length < 4) {
+                originPoints = [...originPoints, [x, y]];
+                // Draw points on canvas
+                const ctx = webcamCanvasRef.current.getContext("2d");
+                ctx.beginPath();
+                ctx.arc(x, y, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = "red";
+                ctx.fill();
+            } else {
+                // Console log webcam size
+                console.log("WEBCAM SIZE", webcamRef.current.video.videoHeight, webcamRef.current.video.videoWidth)
+
+                const videoWidth = webcamRef.current.video.videoWidth;
+                const videoHeight = webcamRef.current.video.videoHeight;
+
+                // Use the webcam dimensions to set the transformed points
+                const transformedPoints = [
+                    [0, 0], // top left
+                    [videoWidth, 0], // top right
+                    [0, videoHeight], // bottom left
+                    [videoWidth, videoHeight], // bottom right
+                ]
+                // Calculate camera2surface transformation matrix
+                setCameraToSurfaceMatrix(warpPerspective(originPoints, transformedPoints, videoWidth, videoHeight));
+                updateTransform();
+                // Save points and transformation matrix in LocalStorage
+                localStorage.setItem("cameraToSurfaceMatrix", JSON.stringify(cameraToSurfaceMatrix));
+            }
+        }
+    }
+    webcamCanvasRef.current.onClick = createOriginalPoint;
+};
+
+export default ProjectionMapping;

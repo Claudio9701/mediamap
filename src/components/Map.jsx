@@ -30,20 +30,18 @@ function getColor(type) {
 }
 
 
-export default function Map({ data, mapWrapperRef }) {
+export default function Map({ data, mapWrapperRef, layers, setLayers }) {
     const basemapRef = useRef();
     const mapRef = useRef();
     const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
-    const [layers, setLayers] = useState([]);
-    let cellChanged = null;
+    const [cellChanged, setCellChanged] = useState(null);
 
     function handleClick(e) {
         console.log("CLICKED", e);
-        // if (e.coordinate !== undefined) {
-        //     cellChanged = e.index;
-        //     data["features"][e.index]["properties"]["desc_zoni"] = "COMERCIAL";
-        //     e.object.properties.desc_zoni = "RESIDENCIAL";
-        // }
+        if (e.coordinate !== undefined) {
+            data["features"][e.index]["properties"]["desc_zoni"] = "RESIDENCIAL";
+            setCellChanged(e.index); // Update layer
+        }
     }
 
     useEffect(() => {
@@ -62,15 +60,13 @@ export default function Map({ data, mapWrapperRef }) {
                 getFillColor: d => getColor(d.properties.desc_zoni),
                 getLineColor: d => [0, 0, 0],
                 updateTriggers: {
-                    getElevation: cellChanged,
-                    getFillColor: data,
+                    getFillColor: cellChanged,
                 },
             }),
         ]);
-        // console.log("mapRef", mapRef.current.deck.viewManager._viewportMap["default-view"].getBounds());
-    }, []);
+    }, [cellChanged]);
 
-
+    console.log("mapRef", mapRef.current?.deck.viewManager._viewportMap["default-view"]?.getBounds());
 
     return (
         <div id="map-wrapper" ref={mapWrapperRef}>
@@ -85,10 +81,9 @@ export default function Map({ data, mapWrapperRef }) {
                 // controller={{ doubleClickZoom: false }} // Avoid infinite zoom
                 controller={true}
                 layers={layers}
-                getTooltip={({ object }) => object && (object.properties.name || object.properties.station)}
+                getTooltip={({ object }) => object && (object.properties.desc_zoni)}
                 onClick={handleClick}
             >
-
                 <BaseMap id="basemap" ref={basemapRef} reuseMaps mapLib={maplibregl} mapStyle={BASEMAP.DARK_MATTER} preventStyleDiffing={true} />
             </DeckGL>
 

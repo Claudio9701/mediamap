@@ -3,15 +3,12 @@ import Webcam from 'react-webcam';
 
 // Roboflow settings
 const PUBLISHABLE_ROBOFLOW_API_KEY = "rf_65Ue4jkP7ARYPi42T25B2cPbRmS2";
-const PROJECT_URL = "lego-bricks-uwgtj";
-const MODEL_VERSION = "1";
+const PROJECT_URL = "microsoft-coco"; // "lego-bricks-uwgtj";
+const MODEL_VERSION = "9"; // "1";
 
-function Roboflow({ data, webcamCanvasRef, webcamRef }) {
-
-
+function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
   // data["features"].forEach(d => {
   //   d["properties"]["desc_zoni"] = "COMERCIAL";
-
   // });
 
   var inferRunning;
@@ -49,12 +46,21 @@ function Roboflow({ data, webcamCanvasRef, webcamRef }) {
       const clientWidth = webcamRef.current.video.clientWidth;
       const clientHeight = webcamRef.current.video.clientHeight;
 
+      const videoWidth = webcamRef.current.video.videoWidth;
+      const videoHeight = webcamRef.current.video.videoHeight;
+
       const detections = await model.detect(webcamRef.current.video);
+
+      console.log("ROBOFLOW MODEL DETECTIONS", detections);
 
       adjustCanvas(clientWidth, clientHeight);
 
       var videoCtx = webcamCanvasRef.current.getContext('2d');
+
       drawBoxes(detections, videoCtx);
+
+      // drawVoxels(detections);
+
     }
   };
 
@@ -65,18 +71,6 @@ function Roboflow({ data, webcamCanvasRef, webcamRef }) {
 
     webcamCanvasRef.current.style.width = w;
     webcamCanvasRef.current.style.height = h;
-  };
-
-  const drawQuadrilateral = (points, ctx) => {
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-    ctx.lineTo(points[1].x, points[1].y);
-
-    for (let i = 1; i < points.length; i++) {
-      ctx.lineTo(points[i].x, points[i].y);
-    }
-    ctx.closePath();
-    ctx.stroke();
   };
 
   const drawBoxes = (detections, ctx) => {
@@ -110,7 +104,7 @@ function Roboflow({ data, webcamCanvasRef, webcamRef }) {
       h = h * scale_h;
 
       // horizontal flip
-      x = webcamCanvasRef.current.width - x - w;
+      // x = webcamCanvasRef.current.width - x - w;
 
       //box
       ctx.beginPath();
@@ -165,16 +159,85 @@ function Roboflow({ data, webcamCanvasRef, webcamRef }) {
     });
   };
 
-  return (
-    <div className="container">
-      <Webcam
-        ref={webcamRef}
-        id='webcam'
-        mirrored={true}
-      />
-      <canvas id='webcamCanvas' ref={webcamCanvasRef} />
-    </div>
-  )
+  const drawVoxels = (detections) => {
+    detections.forEach((row) => {
+      if (true) {
+        //video
+        var temp = row.bbox;
+        temp.class = row.class;
+        temp.color = row.color;
+        temp.confidence = row.confidence;
+        row = temp;
+      }
+
+      if (row.confidence < 0) return;
+
+      // Dimensions
+      var x = row.x - row.width / 2;
+      var y = row.y - row.height / 2;
+      var w = row.width;
+      var h = row.height;
+
+      // Apply projection mapping with camera2PoolMatrix
+      // Example matrix:
+      //   var M = [
+      //     1.139231364547567,
+      //     0.05052095703609813,
+      //     0,
+      //     -0.00013910960531570023,
+      //     -0.01786082750951322,
+      //     1.9089800815679838,
+      //     0,
+      //     0.0008452739495585134,
+      //     0,
+      //     0,
+      //     1,
+      //     0,
+      //     -32.84749601640925,
+      //     59.59938602956676,
+      //     0,
+      //     1
+      // ];
+      // if (camera2PoolMatrix === null) return;
+
+      // let divisor = camera2PoolMatrix[6] * x + camera2PoolMatrix[7] * y + camera2PoolMatrix[8];
+
+      // var x_proj = camera2PoolMatrix[0] * x + camera2PoolMatrix[1] * y + camera2PoolMatrix[2];
+      // x_proj /= divisor;
+      // x_proj -= 640;
+      // var y_proj = camera2PoolMatrix[3] * x + camera2PoolMatrix[4] * y + camera2PoolMatrix[5];
+      // y_proj /= divisor;
+      // y_proj -= 480;
+
+      // console.log("x_proj", x_proj, "y_proj", y_proj);
+
+      // Simulate a click event with the pointer position
+      let pointerPosition = {
+        clientX: x,
+        clientY: y,
+      }
+
+      if (layers !== undefined) {
+        let evt = new PointerEvent('pointerdown', pointerPosition);
+        document.getElementById("map").dispatchEvent(evt);
+        let evt2 = new PointerEvent('pointerup', pointerPosition);
+        window.dispatchEvent(evt2);
+      }
+
+    });
+  }
+
+
+  // return (
+  //   <div className="container">
+  //     <Webcam
+  //       ref={webcamRef}
+  //       id='webcam'
+  //       mirrored={true}
+  //     />
+  //     <canvas id='webcamCanvas' ref={webcamCanvasRef} />
+  //   </div>
+  // )
 }
 
 export default Roboflow;
