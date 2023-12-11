@@ -50,12 +50,12 @@
   pointer-events: none;
 }
 
-.container {
+/* .container {
   position: absolute;
   bottom: 0px;
   left: 0px;
   width: 20%;
-}
+} 
 
 .container #webcam {
   position: absolute;
@@ -74,7 +74,7 @@
   z-index: 10;
   pointer-events: none;
   display: block;
-}
+} */
 
 .container .title {
   position: relative;

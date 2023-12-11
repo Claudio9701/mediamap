@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
-import Webcam from 'react-webcam';
+import { useEffect } from 'react';
 
 // Roboflow settings
 const PUBLISHABLE_ROBOFLOW_API_KEY = "rf_65Ue4jkP7ARYPi42T25B2cPbRmS2";
@@ -37,6 +36,7 @@ function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
   useEffect(startInfer, []);
 
   const detect = async (model) => {
+    console.log(webcamRef)
     // Check data is available
     if (
       typeof webcamRef.current !== "undefined" &&
@@ -226,18 +226,6 @@ function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
 
     });
   }
-
-
-  // return (
-  //   <div className="container">
-  //     <Webcam
-  //       ref={webcamRef}
-  //       id='webcam'
-  //       mirrored={true}
-  //     />
-  //     <canvas id='webcamCanvas' ref={webcamCanvasRef} />
-  //   </div>
-  // )
 }
 
 export default Roboflow;

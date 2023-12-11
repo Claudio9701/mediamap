@@ -7,6 +7,8 @@ import { BASEMAP } from '@deck.gl/carto';
 import { Map as BaseMap } from 'react-map-gl';
 import maplibregl from 'maplibre-gl';
 import { latLngToCell } from 'h3-js';
+
+
 import { Legend } from './Legend.jsx';
 
 // Viewport settings
