@@ -14,6 +14,15 @@ function ProjectionMapping({ appWrapperRef, webcamRef, webcamCanvasRef, calibrat
     const webcamContainerRef = useRef();
     const [points, setPoints] = useState([]);
 
+    const updateTransform = (transform) => {
+        // Apply transformation matrix to all HTML elements that need to be projected
+        appWrapperRef.current.style.overflow = "hidden";
+        webcamRef.current.video.style.transform = `matrix3d(${transform.join(",")})`;
+        webcamRef.current.video.style.visibility = "hidden";
+        webcamCanvasRef.current.style.transform = `matrix3d(${transform.join(",")})`;
+        setCalibrated(true);
+    };
+
     // Handle click event
     const handleClick = (event) => {
         // Get clicked coordinates
@@ -66,12 +75,8 @@ function ProjectionMapping({ appWrapperRef, webcamRef, webcamCanvasRef, calibrat
                 localStorage.setItem("cameraCorners", JSON.stringify(cameraCorners));
                 localStorage.setItem("camera2PoolMatrix", JSON.stringify(M));
 
-                // Apply transformation matrix to all HTML elements that need to be projected
-                webcamRef.current.video.style.transform = `matrix3d(${M.join(",")})`;
-                // webcamRef.current.video.style.visibility = "hidden";
-                webcamCanvasRef.current.style.transform = `matrix3d(${M.join(",")})`;
-
-                setCalibrated(true);
+                // Update transform
+                updateTransform(M);
             }
         }
         else {
@@ -120,18 +125,16 @@ function ProjectionMapping({ appWrapperRef, webcamRef, webcamCanvasRef, calibrat
             }
 
             console.log("Applying transformation matrix")
-            // Apply transformation matrix to all HTML elements that need to be projected
-            webcamRef.current.video.style.transform = `matrix3d(${M.join(",")})`;
-            webcamRef.current.video.style.visibility = "hidden";
-            webcamCanvasRef.current.style.transform = `matrix3d(${M.join(",")})`;
-            setCalibrated(true);
+
+            // Update transform
+            updateTransform();
         }
     }, [])
 
     return (
-        <div ref={webcamContainerRef} className="container" style={{ display: "inline-block" }}>
-            <Webcam ref={webcamRef} id='webcam' mirrored={false} style={{ position: 'absolute' }} />
-            <canvas ref={webcamCanvasRef} id='webcamCanvas' onClick={handleClick} style={{ position: 'relative' }}></canvas>
+        <div ref={webcamContainerRef} className="container" style={{ display: "inline-block", overflow: "hidden" }}>
+            <Webcam ref={webcamRef} id='webcam' mirrored={false} style={{ position: 'absolute', zIndex: 0 }} />
+            <canvas ref={webcamCanvasRef} id='webcamCanvas' onClick={handleClick} style={{ position: 'relative', zIndex: 1 }}></canvas>
         </div>
     )
 }
