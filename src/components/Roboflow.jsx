@@ -2,8 +2,8 @@ import { useEffect } from 'react';
 
 // Roboflow settings
 const PUBLISHABLE_ROBOFLOW_API_KEY = "rf_65Ue4jkP7ARYPi42T25B2cPbRmS2";
-const PROJECT_URL = "microsoft-coco"; // "lego-bricks-uwgtj";
-const MODEL_VERSION = "9"; // "1";
+const PROJECT_URL = "lego-bricks-uwgtj";
+const MODEL_VERSION = "1";
 
 function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
   // data["features"].forEach(d => {

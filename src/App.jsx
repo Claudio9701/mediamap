@@ -32,13 +32,13 @@ function App() {
           setCalibrated={setCalibrated}
         />
 
-        {/* {calibrated && <Roboflow
+        {calibrated && <Roboflow
           gridData={gridData}
           setGridData={setGridData}
           webcamRef={webcamRef}
           webcamCanvasRef={webcamCanvasRef}
           layers={null}
-        />} */}
+        />}
 
       </div>
 

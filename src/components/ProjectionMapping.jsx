@@ -127,7 +127,7 @@ function ProjectionMapping({ appWrapperRef, webcamRef, webcamCanvasRef, calibrat
             console.log("Applying transformation matrix")
 
             // Update transform
-            updateTransform();
+            updateTransform(M);
         }
     }, [])
 
