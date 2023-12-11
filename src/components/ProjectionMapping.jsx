@@ -100,12 +100,13 @@ function ProjectionMapping({ appWrapperRef, webcamRef, webcamCanvasRef, calibrat
 
             webcamCanvasRef.current.width = webcamRef.current.video.videoWidth;
             webcamCanvasRef.current.height = webcamRef.current.video.videoHeight;
-        });
 
-        // Apply maptastic to the app wrapper
-        var maptastic = window.Maptastic(appWrapperRef.current);
-        // Make appwrapper style allow to have two columns with flex
-        appWrapperRef.current.style.display = "flex";
+            appWrapperRef.current.style.width = webcamRef.current.video.videoWidth + "px";
+            appWrapperRef.current.style.height = webcamRef.current.video.videoHeight + "px";
+
+            // Initiliaze Projector to Surface Mapping
+            var maptastic = window.Maptastic(appWrapperRef.current);
+        });
 
         if (localStorage.getItem("camera2PoolMatrix") && localStorage.getItem("cameraPoints")) {
             console.log("Found camera2PoolMatrix and cameraPoints in local storage");
