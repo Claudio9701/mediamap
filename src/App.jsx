@@ -9,7 +9,7 @@ import { load } from '@loaders.gl/core';
 import { JSONLoader } from '@loaders.gl/json';
 
 const DATA_URL = 'https://raw.githubusercontent.com/Claudio9701/mediamap/separate-components/public/grid_data.geojson';
-const data = await load(DATA_URL, JSONLoader);
+const loadGridData = async () => await load(DATA_URL, JSONLoader);
 
 
 function App() {
@@ -17,7 +17,7 @@ function App() {
   const webcamRef = useRef();
   const webcamCanvasRef = useRef();
   const [calibrated, setCalibrated] = useState(false);
-  const [gridData, setGridData] = useState(data);
+  const [gridData, setGridData] = useState(loadGridData());
 
   return (
     <div className="App" >
