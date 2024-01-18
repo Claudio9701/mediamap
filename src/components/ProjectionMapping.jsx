@@ -141,3 +141,5 @@ function ProjectionMapping({ appWrapperRef, webcamRef, webcamCanvasRef, calibrat
 }
 
 export default ProjectionMapping;
+
+export { warpPerspective };

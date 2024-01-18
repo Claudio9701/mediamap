@@ -11,7 +11,7 @@ export const Legend = () => {
                 padding: "10px",
                 borderRadius: "5px",
                 boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.2)",
-                zIndex: "1",
+                zIndex: 10,
             }}
         >
             <h3>Legend</h3>
