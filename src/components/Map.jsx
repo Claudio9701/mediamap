@@ -42,7 +42,7 @@ export default function Map2d({ gridData, setGridData }) {
     function handleClick(e) {
         if (debug) { console.log("SIMULATED CLICK RECEIVED", e); }
 
-        if (e.coordinate !== undefined || e.object !== undefined) {
+        if (e.coordinate !== undefined && e.object !== undefined) {
             // Change current cell value to opposite value (COMERCIAL/RESIDENCIAL)
             const cell_id = e.object["properties"]["OBJECTID"];
             const cell_value = e.object["properties"]["desc_zoni"];
