@@ -1,6 +1,7 @@
 import './App.css';
 
 import { useRef, useState, useEffect } from 'react';
+
 import Map from './components/Map.jsx';
 import Map3D from './components/Map3d.jsx';
 import Roboflow from './components/Roboflow.jsx';
@@ -8,8 +9,7 @@ import ProjectionMapping from './components/ProjectionMapping';
 
 import { load } from '@loaders.gl/core';
 import { JSONLoader } from '@loaders.gl/json';
-
-// import { createSlice, configureStore } from '@reduxjs/toolkit'
+import { Routes, Route } from 'react-router-dom';
 
 const DATA_URL = 'https://raw.githubusercontent.com/Claudio9701/mediamap/separate-components/public/grid_data.geojson';
 const loadGridData = async () => await load(DATA_URL, JSONLoader);
@@ -21,6 +21,7 @@ function App() {
   const [calibrated, setCalibrated] = useState(false);
   const [gridData, setGridData] = useState();
 
+  // Synchronize gridData changes between tabs using localStorage
   const onStorageUpdate = (e) => {
     const { key, newValue } = e;
     if (key === "gridData") {
@@ -41,45 +42,42 @@ function App() {
     };
   }, []);
 
-  // Check if the url is "/" or "/3d"
-  const url = window.location.href;
-
-  if (url.includes("?2d")) return (
+  return (
     <div className="App" >
+      <Routes>
+        <Route path="/2d" element={
+          <div ref={appWrapperRef} style={{ display: "inline-block" }} >
 
-      <div ref={appWrapperRef} style={{ display: "inline-block" }} >
+            <ProjectionMapping
+              appWrapperRef={appWrapperRef}
+              webcamRef={webcamRef}
+              webcamCanvasRef={webcamCanvasRef}
+              setCalibrated={setCalibrated}
+            />
 
-        <ProjectionMapping
-          appWrapperRef={appWrapperRef}
-          webcamRef={webcamRef}
-          webcamCanvasRef={webcamCanvasRef}
-          setCalibrated={setCalibrated}
+            {calibrated && <Roboflow
+              gridData={gridData}
+              setGridData={setGridData}
+              webcamRef={webcamRef}
+              webcamCanvasRef={webcamCanvasRef}
+              layers={null}
+            />}
+
+            {calibrated && <Map
+              gridData={gridData}
+              setGridData={setGridData}
+            />}
+
+          </div>
+        }
         />
-
-        {calibrated && <Roboflow
-          gridData={gridData}
-          setGridData={setGridData}
-          webcamRef={webcamRef}
-          webcamCanvasRef={webcamCanvasRef}
-          layers={null}
-        />}
-
-        {calibrated && <Map
-          gridData={gridData}
-          setGridData={setGridData}
-        />}
-
-      </div>
-
-    </div>
-  )
-
-  if (url.includes("?3d")) return (
-    <div className="App" >
-      <Map3D
-        gridData={gridData}
-        setGridData={setGridData}
-      />
+        <Route path="/3d" element={
+          <Map3D
+            gridData={gridData}
+            setGridData={setGridData}
+          />
+        } />
+      </Routes >
     </div>
   )
 }
