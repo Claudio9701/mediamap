@@ -1,9 +1,11 @@
+
 import { useEffect } from 'react';
+import { warpPerspective } from './ProjectionMapping.jsx';
 
 // Roboflow settings
 const PUBLISHABLE_ROBOFLOW_API_KEY = "rf_65Ue4jkP7ARYPi42T25B2cPbRmS2";
-const PROJECT_URL = "lego-bricks-uwgtj";
-const MODEL_VERSION = "1";
+const PROJECT_URL = "lego-bricks-uwgtj" // "rock-paper-scissors-sxsw"
+const MODEL_VERSION = "1"; // "11"
 
 function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
   // data["features"].forEach(d => {
@@ -36,8 +38,7 @@ function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
   useEffect(startInfer, []);
 
   const detect = async (model) => {
-    console.log(webcamRef)
-    // Check data is available
+    // Check webcam data is available
     if (
       typeof webcamRef.current !== "undefined" &&
       webcamRef.current !== null &&
@@ -51,7 +52,7 @@ function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
 
       const detections = await model.detect(webcamRef.current.video);
 
-      console.log("ROBOFLOW MODEL DETECTIONS", detections);
+      // console.log("ROBOFLOW MODEL DETECTIONS", detections);
 
       adjustCanvas(clientWidth, clientHeight);
 
@@ -59,7 +60,7 @@ function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
 
       drawBoxes(detections, videoCtx);
 
-      // drawVoxels(detections);
+      drawGeoPoint(detections);
 
     }
   };
@@ -94,17 +95,13 @@ function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
       var w = row.width;
       var h = row.height;
 
-      var scale_w = webcamCanvasRef.current.width / webcamRef.current.video.videoWidth;
-      var scale_h = webcamCanvasRef.current.height / webcamRef.current.video.videoHeight;
+      //centroid
+      ctx.beginPath();
+      ctx.arc(row.x, row.y, 5, 0, 2 * Math.PI);
+      ctx.fillStyle = "blue"
+      ctx.fill();
 
-      // adjust dimensions
-      x = x * scale_w;
-      y = y * scale_h;
-      w = w * scale_w;
-      h = h * scale_h;
-
-      // horizontal flip
-      // x = webcamCanvasRef.current.width - x - w;
+      console.log(row.x, row.y)
 
       //box
       ctx.beginPath();
@@ -159,7 +156,8 @@ function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
     });
   };
 
-  const drawVoxels = (detections) => {
+  const drawGeoPoint = (detections) => {
+
     detections.forEach((row) => {
       if (true) {
         //video
@@ -172,58 +170,70 @@ function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
 
       if (row.confidence < 0) return;
 
-      // Dimensions
-      var x = row.x - row.width / 2;
-      var y = row.y - row.height / 2;
-      var w = row.width;
-      var h = row.height;
+      // Normalize x and y position using the webcam video size
+      const videoWidth = webcamRef.current.video.videoWidth;
+      const videoHeight = webcamRef.current.video.videoHeight;
+      console.log("DEBUG RAW POINT", row.x, row.y)
+      const normalized_x = row.x - videoWidth / 2;
+      const normalized_y = row.y - videoHeight / 2;
+      console.log("DEBUG NORMALIZED POINT", normalized_x, normalized_y)
 
-      // Apply projection mapping with camera2PoolMatrix
-      // Example matrix:
-      //   var M = [
-      //     1.139231364547567,
-      //     0.05052095703609813,
-      //     0,
-      //     -0.00013910960531570023,
-      //     -0.01786082750951322,
-      //     1.9089800815679838,
-      //     0,
-      //     0.0008452739495585134,
-      //     0,
-      //     0,
-      //     1,
-      //     0,
-      //     -32.84749601640925,
-      //     59.59938602956676,
-      //     0,
-      //     1
-      // ];
-      // if (camera2PoolMatrix === null) return;
+      // Transform normalized position using the "camera to surface" transformation matrix
+      const canvas = webcamCanvasRef.current;
+      const matrix = new DOMMatrix(getComputedStyle(canvas).transform);
+      const matrixInverse = matrix.inverse();
+      console.log("CANVAS MATRIX", matrix);
+      const point = new DOMPoint(normalized_x, normalized_y, 0, 1); // Convert to homogeneous coordinates
+      const transformedPoint = matrix.transformPoint(point); // Apply the transformation matrix
 
-      // let divisor = camera2PoolMatrix[6] * x + camera2PoolMatrix[7] * y + camera2PoolMatrix[8];
+      // Apply the "projector to surface" transformation matrix
+      const appContainer = webcamCanvasRef.current.parentElement.parentElement;
+      const appContainerMatrix = new DOMMatrix(getComputedStyle(appContainer).transform);
 
-      // var x_proj = camera2PoolMatrix[0] * x + camera2PoolMatrix[1] * y + camera2PoolMatrix[2];
-      // x_proj /= divisor;
-      // x_proj -= 640;
-      // var y_proj = camera2PoolMatrix[3] * x + camera2PoolMatrix[4] * y + camera2PoolMatrix[5];
-      // y_proj /= divisor;
-      // y_proj -= 480;
+      // Generate the "projection mapping" transformation matrix
+      const projmatrix4 = matrix.multiply(appContainerMatrix);
 
-      // console.log("x_proj", x_proj, "y_proj", y_proj);
+      // Apply the "projection mapping" transformation matrix
+      const appTransformedPoint1 = appContainerMatrix.transformPoint(transformedPoint);
+      // const appTransformedPoint = appContainerMatrix.inverse().transformPoint(transformedPoint);
 
-      // Simulate a click event with the pointer position
+      // // Compute the last needed transformation matrix using the camera source points and the projected target points
+      // const cameraSrcPoints = JSON.parse(localStorage.getItem("cameraCorners"));
+      // const maptasticLayers = JSON.parse(localStorage.getItem("maptastic.layers"))
+      // console.log("DEBUG maptasticLayers", maptasticLayers)
+      // const projectedDstPoints = maptasticLayers[0]["targetPoints"]
+      // console.log("DEBUG projectedDstPoints", projectedDstPoints)
+
+      // const cameraToFocusMatrix = new DOMMatrix(warpPerspective(cameraSrcPoints, projectedDstPoints, [0, 0]));
+      // console.log("DEBUG cameraToFocusMatrix", cameraToFocusMatrix);
+
+      // // Apply the last transformation matrix
+      // const appTransformedPoint = cameraToFocusMatrix.transformPoint(appTransformedPoint1);
+
+      // Convert back to Cartesian coordinates
+      const appTransformed_x = appTransformedPoint1.x / appTransformedPoint1.w;
+      const appTransformed_y = appTransformedPoint1.y / appTransformedPoint1.w;
+
+      // De-normalize the transformed position
+      const appContainerRect = appContainer.getBoundingClientRect();
+      const x = (appTransformed_x + appContainerRect.width / 2);
+      const y = (appTransformed_y + appContainerRect.height / 2);
+      console.log("DEBUG FINAL POINT", x, y)
+
+      // Set pointer position
       let pointerPosition = {
         clientX: x,
         clientY: y,
-      }
+        bubbles: true,
+        cancelable: true,
+        view: window
+      };
 
-      if (layers !== undefined) {
-        let evt = new PointerEvent('pointerdown', pointerPosition);
-        document.getElementById("map").dispatchEvent(evt);
-        let evt2 = new PointerEvent('pointerup', pointerPosition);
-        window.dispatchEvent(evt2);
-      }
-
+      // Simulate a click event with the pointer position
+      let evt = new PointerEvent('pointerdown', pointerPosition);
+      document.getElementById('map-wrapper').dispatchEvent(evt);
+      let evt2 = new PointerEvent('pointerup', pointerPosition);
+      window.dispatchEvent(evt2);
     });
   }
 }
