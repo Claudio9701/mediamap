@@ -44,7 +44,7 @@ function App() {
   // Check if the url is "/" or "/3d"
   const url = window.location.href;
 
-  if (url.includes("/2d")) return (
+  if (url.includes("?2d")) return (
     <div className="App" >
 
       <div ref={appWrapperRef} style={{ display: "inline-block" }} >
@@ -74,7 +74,7 @@ function App() {
     </div>
   )
 
-  if (url.includes("/3d")) return (
+  if (url.includes("?3d")) return (
     <div className="App" >
       <Map3D
         gridData={gridData}
