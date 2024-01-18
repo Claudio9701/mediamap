@@ -2,7 +2,7 @@ import './App.css';
 
 import { useRef, useState, useEffect } from 'react';
 
-import Map from './components/Map.jsx';
+import Map2d from './components/Map.jsx';
 import Map3D from './components/Map3d.jsx';
 import Roboflow from './components/Roboflow.jsx';
 import ProjectionMapping from './components/ProjectionMapping';
@@ -63,7 +63,7 @@ function App() {
               layers={null}
             />}
 
-            {calibrated && <Map
+            {calibrated && <Map2d
               gridData={gridData}
               setGridData={setGridData}
             />}

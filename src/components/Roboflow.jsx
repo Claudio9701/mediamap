@@ -1,17 +1,13 @@
 
 import { useEffect } from 'react';
-import { warpPerspective } from './ProjectionMapping.jsx';
 
+// TODO: Set roboflow settings from .env or config endpoint
 // Roboflow settings
 const PUBLISHABLE_ROBOFLOW_API_KEY = "rf_65Ue4jkP7ARYPi42T25B2cPbRmS2";
 const PROJECT_URL = "lego-bricks-uwgtj" // "rock-paper-scissors-sxsw"
 const MODEL_VERSION = "1"; // "11"
 
 function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
-  // data["features"].forEach(d => {
-  //   d["properties"]["desc_zoni"] = "COMERCIAL";
-  // });
-
   var inferRunning;
   var model;
 
@@ -47,20 +43,16 @@ function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
       const clientWidth = webcamRef.current.video.clientWidth;
       const clientHeight = webcamRef.current.video.clientHeight;
 
-      const videoWidth = webcamRef.current.video.videoWidth;
-      const videoHeight = webcamRef.current.video.videoHeight;
-
       const detections = await model.detect(webcamRef.current.video);
 
       // console.log("ROBOFLOW MODEL DETECTIONS", detections);
 
       adjustCanvas(clientWidth, clientHeight);
 
-      var videoCtx = webcamCanvasRef.current.getContext('2d');
+      // var videoCtx = webcamCanvasRef.current.getContext('2d');
+      // drawBoxes(detections, videoCtx);
 
-      drawBoxes(detections, videoCtx);
-
-      drawGeoPoint(detections);
+      genGeoPointers(detections);
 
     }
   };
@@ -86,7 +78,7 @@ function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
         temp.confidence = row.confidence;
         row = temp;
       }
-
+      // TODO: Set confidence threshold from .env
       if (row.confidence < 0) return;
 
       //dimensions
@@ -95,13 +87,12 @@ function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
       var w = row.width;
       var h = row.height;
 
-      //centroid
-      ctx.beginPath();
-      ctx.arc(row.x, row.y, 5, 0, 2 * Math.PI);
-      ctx.fillStyle = "blue"
-      ctx.fill();
-
-      console.log(row.x, row.y)
+      // //centroid
+      // ctx.beginPath();
+      // ctx.arc(row.x, row.y, 5, 0, 2 * Math.PI);
+      // ctx.fillStyle = "blue"
+      // ctx.fill();
+      // console.log(row.x, row.y)
 
       //box
       ctx.beginPath();
@@ -110,53 +101,53 @@ function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
       ctx.rect(x, y, w, h);
       ctx.stroke();
 
-      //shade
-      ctx.fillStyle = "black";
-      ctx.globalAlpha = 0.2;
-      ctx.fillRect(x, y, w, h);
-      ctx.globalAlpha = 1.0;
+      // //shade
+      // ctx.fillStyle = "black";
+      // ctx.globalAlpha = 0.2;
+      // ctx.fillRect(x, y, w, h);
+      // ctx.globalAlpha = 1.0;
 
-      //label
-      var fontColor = "black";
-      var fontSize = 12;
-      ctx.font = `${fontSize}px monospace`;
-      ctx.textAlign = "center";
-      var classTxt = row.class;
-      var confTxt = (row.confidence * 100).toFixed().toString() + "%";
-      var msgTxt = classTxt + " " + confTxt;
-      const textHeight = fontSize;
-      var textWidth = ctx.measureText(msgTxt).width;
+      // //label
+      // var fontColor = "black";
+      // var fontSize = 12;
+      // ctx.font = `${fontSize}px monospace`;
+      // ctx.textAlign = "center";
+      // var classTxt = row.class;
+      // var confTxt = (row.confidence * 100).toFixed().toString() + "%";
+      // var msgTxt = classTxt + " " + confTxt;
+      // const textHeight = fontSize;
+      // var textWidth = ctx.measureText(msgTxt).width;
 
-      if (textHeight <= h && textWidth <= w) {
-        ctx.strokeStyle = row.color;
-        ctx.fillStyle = row.color;
-        ctx.fillRect(
-          x - ctx.lineWidth / 2,
-          y - textHeight - ctx.lineWidth,
-          textWidth + 2,
-          textHeight + 1
-        );
-        ctx.stroke();
-        ctx.fillStyle = fontColor;
-        ctx.fillText(msgTxt, x + textWidth / 2 + 1, y - 1);
-      } else {
-        textWidth = ctx.measureText(confTxt).width;
-        ctx.strokeStyle = row.color;
-        ctx.fillStyle = row.color;
-        ctx.fillRect(
-          x - ctx.lineWidth / 2,
-          y - textHeight - ctx.lineWidth,
-          textWidth + 2,
-          textHeight + 1
-        );
-        ctx.stroke();
-        ctx.fillStyle = fontColor;
-        ctx.fillText(confTxt, x + textWidth / 2 + 1, y - 1);
-      }
+      // if (textHeight <= h && textWidth <= w) {
+      //   ctx.strokeStyle = row.color;
+      //   ctx.fillStyle = row.color;
+      //   ctx.fillRect(
+      //     x - ctx.lineWidth / 2,
+      //     y - textHeight - ctx.lineWidth,
+      //     textWidth + 2,
+      //     textHeight + 1
+      //   );
+      //   ctx.stroke();
+      //   ctx.fillStyle = fontColor;
+      //   ctx.fillText(msgTxt, x + textWidth / 2 + 1, y - 1);
+      // } else {
+      //   textWidth = ctx.measureText(confTxt).width;
+      //   ctx.strokeStyle = row.color;
+      //   ctx.fillStyle = row.color;
+      //   ctx.fillRect(
+      //     x - ctx.lineWidth / 2,
+      //     y - textHeight - ctx.lineWidth,
+      //     textWidth + 2,
+      //     textHeight + 1
+      //   );
+      //   ctx.stroke();
+      //   ctx.fillStyle = fontColor;
+      //   ctx.fillText(confTxt, x + textWidth / 2 + 1, y - 1);
+      // }
     });
   };
 
-  const drawGeoPoint = (detections) => {
+  const genGeoPointers = (detections) => {
 
     detections.forEach((row) => {
       if (true) {
@@ -181,8 +172,7 @@ function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
       // Transform normalized position using the "camera to surface" transformation matrix
       const canvas = webcamCanvasRef.current;
       const matrix = new DOMMatrix(getComputedStyle(canvas).transform);
-      const matrixInverse = matrix.inverse();
-      console.log("CANVAS MATRIX", matrix);
+      console.log("DEBUG CANVAS MATRIX", matrix);
       const point = new DOMPoint(normalized_x, normalized_y, 0, 1); // Convert to homogeneous coordinates
       const transformedPoint = matrix.transformPoint(point); // Apply the transformation matrix
 
@@ -190,29 +180,12 @@ function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
       const appContainer = webcamCanvasRef.current.parentElement.parentElement;
       const appContainerMatrix = new DOMMatrix(getComputedStyle(appContainer).transform);
 
-      // Generate the "projection mapping" transformation matrix
-      const projmatrix4 = matrix.multiply(appContainerMatrix);
-
       // Apply the "projection mapping" transformation matrix
-      const appTransformedPoint1 = appContainerMatrix.transformPoint(transformedPoint);
-      // const appTransformedPoint = appContainerMatrix.inverse().transformPoint(transformedPoint);
-
-      // // Compute the last needed transformation matrix using the camera source points and the projected target points
-      // const cameraSrcPoints = JSON.parse(localStorage.getItem("cameraCorners"));
-      // const maptasticLayers = JSON.parse(localStorage.getItem("maptastic.layers"))
-      // console.log("DEBUG maptasticLayers", maptasticLayers)
-      // const projectedDstPoints = maptasticLayers[0]["targetPoints"]
-      // console.log("DEBUG projectedDstPoints", projectedDstPoints)
-
-      // const cameraToFocusMatrix = new DOMMatrix(warpPerspective(cameraSrcPoints, projectedDstPoints, [0, 0]));
-      // console.log("DEBUG cameraToFocusMatrix", cameraToFocusMatrix);
-
-      // // Apply the last transformation matrix
-      // const appTransformedPoint = cameraToFocusMatrix.transformPoint(appTransformedPoint1);
+      const appTransformedPoint = appContainerMatrix.transformPoint(transformedPoint);
 
       // Convert back to Cartesian coordinates
-      const appTransformed_x = appTransformedPoint1.x / appTransformedPoint1.w;
-      const appTransformed_y = appTransformedPoint1.y / appTransformedPoint1.w;
+      const appTransformed_x = appTransformedPoint.x / appTransformedPoint.w;
+      const appTransformed_y = appTransformedPoint.y / appTransformedPoint.w;
 
       // De-normalize the transformed position
       const appContainerRect = appContainer.getBoundingClientRect();

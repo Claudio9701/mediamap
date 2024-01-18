@@ -5,9 +5,6 @@ import { GeoJsonLayer, ScatterplotLayer } from '@deck.gl/layers';
 import { BASEMAP } from '@deck.gl/carto';
 import { Map as BaseMap } from 'react-map-gl';
 import maplibregl from 'maplibre-gl';
-import * as turf from '@turf/turf';
-
-import { Legend } from './Legend.jsx';
 
 // Viewport settings
 const INITIAL_VIEW_STATE = {
@@ -29,8 +26,7 @@ function getColor(type) {
     }
 }
 
-
-export default function Map({ gridData, setGridData }) {
+export default function Map2d({ gridData, setGridData }) {
     const basemapRef = useRef();
     const mapRef = useRef();
     const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
@@ -38,51 +34,73 @@ export default function Map({ gridData, setGridData }) {
     const [cellChanged, setCellChanged] = useState(null);
     const [cellSide, setCellSide] = useState(0.005); // Express in kilometers
     const [gridLayer, setGridLayer] = useState();
+    const [modifiedObjects, setModifiedObjects] = useState(new Map());
+
+    // TODO: Read DEBUG from .env file
+    const debug = false;
 
     function handleClick(e) {
-        console.log("SIMULATED CLICK RECEIVED", e);
-        if (e.coordinate !== undefined || e.object !== undefined) {
-            // Change current cell value
-            e.object["properties"]["desc_zoni"] = "RESIDENCIAL";
-            setCellChanged(e.index);
-            localStorage.setItem("gridData", JSON.stringify(gridData));
+        if (debug) { console.log("SIMULATED CLICK RECEIVED", e); }
 
-            // // Add a geographical point in the position of the click
-            // setGridLayer(new ScatterplotLayer({
-            //     id: 'scatter-layer-2',
-            //     data: [
-            //         {
-            //             position: [e.coordinate[0], e.coordinate[1]],
-            //             color: [255, 0, 0],
-            //             radius: 4,
-            //         },
-            //     ],
-            //     pickable: true,
-            //     opacity: 0.8,
-            //     stroked: true,
-            //     filled: true,
-            //     radiusScale: 6,
-            //     radiusMinPixels: 1,
-            //     radiusMaxPixels: 100,
-            //     lineWidthMinPixels: 1,
-            //     getPosition: d => d.position,
-            //     getRadius: d => d.radius,
-            //     getFillColor: d => d.color,
-            //     getLineColor: d => d.color,
-            //     getLineWidth: d => 1,
-            // }));
+        if (e.coordinate !== undefined || e.object !== undefined) {
+            // Change current cell value to opposite value (COMERCIAL/RESIDENCIAL)
+            const cell_id = e.object["properties"]["OBJECTID"];
+            const cell_value = e.object["properties"]["desc_zoni"];
+
+            if (!modifiedObjects.has(cell_id) || modifiedObjects.get(cell_id) !== cell_value) {
+                console.log("CELL CHANGED", cell_id, cell_value);
+                const prev_cell_value = cell_value;
+                const new_zoni = cell_value === "COMERCIAL" ? "RESIDENCIAL" : "COMERCIAL";
+
+                e.object["properties"]["desc_zoni"] = new_zoni;
+
+                setModifiedObjects(prevModifiedObjects => {
+                    const newModifiedObjects = new Map(prevModifiedObjects);
+                    newModifiedObjects.set(cell_id, prev_cell_value);
+                    return newModifiedObjects;
+                });
+
+                setCellChanged(e.index);
+            }
+            // new_zoni = e.object["properties"]["desc_zoni"] === "COMERCIAL" ? "RESIDENCIAL" : "COMERCIAL";
+            // e.object["properties"]["desc_zoni"] = new_zoni;
+
+            if (debug) {
+                // Add a geographical point in the position of the click
+                setGridLayer(new ScatterplotLayer({
+                    id: 'scatter-layer-2',
+                    data: [
+                        {
+                            position: [e.coordinate[0], e.coordinate[1]],
+                            color: [255, 0, 0],
+                            radius: 4,
+                        },
+                    ],
+                    pickable: true,
+                    opacity: 0.8,
+                    stroked: true,
+                    filled: true,
+                    radiusScale: 6,
+                    radiusMinPixels: 1,
+                    radiusMaxPixels: 100,
+                    lineWidthMinPixels: 1,
+                    getPosition: d => d.position,
+                    getRadius: d => d.radius,
+                    getFillColor: d => d.color,
+                    getLineColor: d => d.color,
+                    getLineWidth: d => 1,
+                }));
+            }
         }
     }
 
     useEffect(() => {
-        console.log("USE EFFECT RUNNING IN MAP")
         if (
             mapRef.current !== null &&
             mapRef.current?.deck.viewManager !== null &&
             mapRef.current?.deck.viewManager._viewportMap !== null
 
         ) {
-            // Apply the CSS transform to the map container too
             const viewport = mapRef.current?.deck.viewManager._viewportMap["default-view"];
             const bbox = viewport?.getBounds();
             if (bbox !== undefined) {
@@ -94,18 +112,19 @@ export default function Map({ gridData, setGridData }) {
                 bbox[2] = bbox[2] + margin;
                 bbox[3] = bbox[3] + margin;
 
-                console.log("CREATE GRID bbox", bbox)
-                console.log("CREATE GRID cellSide", cellSide)
-
+                // TODO: Handle data from API using bbox
+                if (debug) {
+                    console.log("CREATE GRID bbox", bbox)
+                    // console.log("CREATE GRID cellSide", cellSide)
+                }
                 // const squareGrid = turf.squareGrid(bbox, cellSide);
                 // // Create property "desc_zoni" with value "COMERCIAL" for each feature
                 // squareGrid["features"].forEach(d => {
                 //     d["properties"]["desc_zoni"] = "COMERCIAL";
                 // });
-                // console.log("CREATE GRID squareGrid", squareGrid);
-                console.log("READED GRID gridData", gridData);
-
                 // setGridData(squareGrid);
+                // localStorage.setItem("gridData", JSON.stringify(squareGrid));
+
                 localStorage.setItem("gridData", JSON.stringify(gridData));
 
                 const gridLayer = new GeoJsonLayer({
@@ -132,17 +151,13 @@ export default function Map({ gridData, setGridData }) {
 
     useEffect(() => {
         if (cellChanged !== null) {
-            // Create a GeoJsonLayer with the grid data
-            console.log("CLICKED cellChanged", cellChanged)
-            console.log("CLICKED gridData", gridData["features"][cellChanged])
-
+            localStorage.setItem("gridData", JSON.stringify(gridData));
+            // Create a GeoJsonLayer with the updated grid data
             const gridLayer = new GeoJsonLayer({
                 id: 'grid-layer',
                 data: gridData,
                 pickable: true,
                 stroked: true,
-                // lineWidthScale: 20,
-                // lineWidthMinPixels: 2,
                 getFillColor: d => getColor(d.properties.desc_zoni),
                 getLineColor: [255, 255, 255],
                 getLineWidth: 1,
@@ -159,8 +174,6 @@ export default function Map({ gridData, setGridData }) {
 
     return (
         <div style={{ zIndex: 10 }}>
-            {/* <Legend /> */}
-
             {/* Cell side length slider */}
             {/* <div style={{
                 position: "absolute",
@@ -174,7 +187,6 @@ export default function Map({ gridData, setGridData }) {
                 zIndex: 11,
                 flexDirection: "column"
             }}> */}
-            {/* Format value to be three decimal floating point */}
             {/* <label htmlFor="cell-side">Cell side length {cellSide.toFixed(3)} km</label>
                 <input
                     type="range"
@@ -189,13 +201,13 @@ export default function Map({ gridData, setGridData }) {
             <DeckGL
                 id="map"
                 ref={mapRef}
+                // TODO: Handle mediapipe map controller
                 // viewState={viewState}
-                initialViewState={INITIAL_VIEW_STATE}
                 // onViewStateChange={({ viewState }) => setViewState(viewState)}
                 // controller={{ doubleClickZoom: false }} // Avoid infinite zoom
+                initialViewState={INITIAL_VIEW_STATE}
                 controller={false}
                 layers={[gridLayer]}
-                // getTooltip={({ object }) => object && (object.properties.desc_zoni)}
                 onClick={handleClick}
             >
                 <BaseMap id="basemap" ref={basemapRef} reuseMaps mapLib={maplibregl} mapStyle={BASEMAP.DARK_MATTER} preventStyleDiffing={true} />
