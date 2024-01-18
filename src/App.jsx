@@ -9,7 +9,7 @@ import ProjectionMapping from './components/ProjectionMapping';
 import { load } from '@loaders.gl/core';
 import { JSONLoader } from '@loaders.gl/json';
 
-import { createSlice, configureStore } from '@reduxjs/toolkit'
+// import { createSlice, configureStore } from '@reduxjs/toolkit'
 
 const DATA_URL = 'https://raw.githubusercontent.com/Claudio9701/mediamap/separate-components/public/grid_data.geojson';
 const loadGridData = async () => await load(DATA_URL, JSONLoader);
