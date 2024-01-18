@@ -151,7 +151,8 @@ export default function Map2d({ gridData, setGridData }) {
 
     useEffect(() => {
         if (cellChanged !== null) {
-            localStorage.setItem("gridData", JSON.stringify(gridData));
+            if (gridData !== undefined) { localStorage.setItem("gridData", JSON.stringify(gridData)) };
+
             // Create a GeoJsonLayer with the updated grid data
             const gridLayer = new GeoJsonLayer({
                 id: 'grid-layer',
