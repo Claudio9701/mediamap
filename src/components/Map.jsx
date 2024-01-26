@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-
 import DeckGL from '@deck.gl/react';
-import { GeoJsonLayer, ScatterplotLayer } from '@deck.gl/layers';
+import { GeoJsonLayer } from '@deck.gl/layers';
 import { BASEMAP } from '@deck.gl/carto';
 import { Map as BaseMap } from 'react-map-gl';
 import maplibregl from 'maplibre-gl';
@@ -10,7 +9,7 @@ import maplibregl from 'maplibre-gl';
 const INITIAL_VIEW_STATE = {
     longitude: -77.055,
     latitude: -12.044,
-    zoom: 15,
+    zoom: 14.5,
     pitch: 0,
     bearing: 0
 };
@@ -18,29 +17,23 @@ const INITIAL_VIEW_STATE = {
 function getColor(type) {
     switch (type) {
         case 'COMERCIAL':
-            return [255, 0, 0, 255 * 0.2];
+            return [255, 0, 0];
         case 'RESIDENCIAL':
-            return [0, 255, 0, 255 * 0.2];
+            return [0, 255, 0];
         default:
-            return [255, 255, 255, 255 * 0.2];
+            return [255, 255, 255];
     }
 }
 
-export default function Map2d({ gridData, setGridData }) {
+export default function Map2d({ gridData }) {
     const basemapRef = useRef();
     const mapRef = useRef();
-    const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
-    const [layers, setLayers] = useState([]);
     const [cellChanged, setCellChanged] = useState(null);
-    const [cellSide, setCellSide] = useState(0.005); // Express in kilometers
     const [gridLayer, setGridLayer] = useState();
     const [modifiedObjects, setModifiedObjects] = useState(new Map());
 
-    // TODO: Read DEBUG from .env file
-    const debug = false;
-
     function handleClick(e) {
-        if (debug) { console.log("SIMULATED CLICK RECEIVED", e); }
+        if (import.meta.env.VITE_DEBUG) { console.log("SIMULATED CLICK RECEIVED", e) };
 
         if (e.coordinate !== undefined && e.object !== undefined) {
             // Change current cell value to opposite value (COMERCIAL/RESIDENCIAL)
@@ -48,7 +41,7 @@ export default function Map2d({ gridData, setGridData }) {
             const cell_value = e.object["properties"]["desc_zoni"];
 
             if (!modifiedObjects.has(cell_id) || modifiedObjects.get(cell_id) !== cell_value) {
-                console.log("CELL CHANGED", cell_id, cell_value);
+                if (import.meta.env.VITE_DEBUG) { console.log("CELL CHANGED", cell_id, cell_value) };
                 const prev_cell_value = cell_value;
                 const new_zoni = cell_value === "COMERCIAL" ? "RESIDENCIAL" : "COMERCIAL";
 
@@ -61,35 +54,6 @@ export default function Map2d({ gridData, setGridData }) {
                 });
 
                 setCellChanged(e.index);
-            }
-            // new_zoni = e.object["properties"]["desc_zoni"] === "COMERCIAL" ? "RESIDENCIAL" : "COMERCIAL";
-            // e.object["properties"]["desc_zoni"] = new_zoni;
-
-            if (debug) {
-                // Add a geographical point in the position of the click
-                setGridLayer(new ScatterplotLayer({
-                    id: 'scatter-layer-2',
-                    data: [
-                        {
-                            position: [e.coordinate[0], e.coordinate[1]],
-                            color: [255, 0, 0],
-                            radius: 4,
-                        },
-                    ],
-                    pickable: true,
-                    opacity: 0.8,
-                    stroked: true,
-                    filled: true,
-                    radiusScale: 6,
-                    radiusMinPixels: 1,
-                    radiusMaxPixels: 100,
-                    lineWidthMinPixels: 1,
-                    getPosition: d => d.position,
-                    getRadius: d => d.radius,
-                    getFillColor: d => d.color,
-                    getLineColor: d => d.color,
-                    getLineWidth: d => 1,
-                }));
             }
         }
     }
@@ -105,25 +69,7 @@ export default function Map2d({ gridData, setGridData }) {
             const bbox = viewport?.getBounds();
             if (bbox !== undefined) {
 
-                // Add a margin to the bbox
-                const margin = 0.005;
-                bbox[0] = bbox[0] - margin;
-                bbox[1] = bbox[1] - margin;
-                bbox[2] = bbox[2] + margin;
-                bbox[3] = bbox[3] + margin;
-
-                // TODO: Handle data from API using bbox
-                if (debug) {
-                    console.log("CREATE GRID bbox", bbox)
-                    // console.log("CREATE GRID cellSide", cellSide)
-                }
-                // const squareGrid = turf.squareGrid(bbox, cellSide);
-                // // Create property "desc_zoni" with value "COMERCIAL" for each feature
-                // squareGrid["features"].forEach(d => {
-                //     d["properties"]["desc_zoni"] = "COMERCIAL";
-                // });
-                // setGridData(squareGrid);
-                // localStorage.setItem("gridData", JSON.stringify(squareGrid));
+                if (import.meta.env.VITE_DEBUG) console.log("MAP BBOX", bbox)
 
                 localStorage.setItem("gridData", JSON.stringify(gridData));
 
@@ -132,11 +78,10 @@ export default function Map2d({ gridData, setGridData }) {
                     data: gridData,
                     pickable: true,
                     stroked: true,
-                    // lineWidthScale: 20,
-                    // lineWidthMinPixels: 2,
                     getFillColor: d => getColor(d.properties.desc_zoni),
                     getLineColor: [255, 255, 255],
-                    getLineWidth: 1,
+                    getLineWidth: 10,
+                    getLineMinPixels: 2,
                     updateTriggers: {
                         getFillColor: [cellChanged],
                     },
@@ -159,9 +104,10 @@ export default function Map2d({ gridData, setGridData }) {
                 data: gridData,
                 pickable: true,
                 stroked: true,
-                getFillColor: d => getColor(d.properties.desc_zoni),
+                getFillColor: d => getColor(d.properties.desc_zoni, 0.5),
                 getLineColor: [255, 255, 255],
-                getLineWidth: 1,
+                getLineWidth: 10,
+                getLineMinPixels: 2,
                 updateTriggers: {
                     getFillColor: [cellChanged],
                 },
@@ -175,37 +121,10 @@ export default function Map2d({ gridData, setGridData }) {
 
     return (
         <div style={{ zIndex: 10 }}>
-            {/* Cell side length slider */}
-            {/* <div style={{
-                position: "absolute",
-                bottom: "10px",
-                right: "10px",
-                backgroundColor: "rgba(0, 0, 0, 0.5)",
-                padding: "10px",
-                borderRadius: "5px",
-                boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.2)",
-                display: "flex",
-                zIndex: 11,
-                flexDirection: "column"
-            }}> */}
-            {/* <label htmlFor="cell-side">Cell side length {cellSide.toFixed(3)} km</label>
-                <input
-                    type="range"
-                    step="0.005"
-                    min="0.005"
-                    max="1"
-                    value={cellSide}
-                    onChange={(e) => { setCellSide(Number(e.target.value)) }}
-                />
-            </div> */}
-
             <DeckGL
                 id="map"
                 ref={mapRef}
-                // TODO: Handle mediapipe map controller
-                // viewState={viewState}
-                // onViewStateChange={({ viewState }) => setViewState(viewState)}
-                // controller={{ doubleClickZoom: false }} // Avoid infinite zoom
+                // TODO: Use a mediapipe controller to move the map
                 initialViewState={INITIAL_VIEW_STATE}
                 controller={false}
                 layers={[gridLayer]}

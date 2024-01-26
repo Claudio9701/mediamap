@@ -1,15 +1,12 @@
 
 import { useEffect } from 'react';
 
-// TODO: Set roboflow settings from .env or config endpoint
-// Roboflow settings
-const PUBLISHABLE_ROBOFLOW_API_KEY = "rf_65Ue4jkP7ARYPi42T25B2cPbRmS2";
-const PROJECT_URL = "lego-bricks-uwgtj" // "rock-paper-scissors-sxsw"
-const MODEL_VERSION = "1"; // "11"
+const PUBLISHABLE_ROBOFLOW_API_KEY = import.meta.env.VITE_PUBLISHABLE_ROBOFLOW_API_KEY || alert("Please set the PUBLISHABLE_ROBOFLOW_API_KEY environment variable in");
+const PROJECT_URL = import.meta.env.VITE_ROBOFLOW_PROJECT_URL || alert("Please set the ROBOFLOW_PROJECT_URL environment variable");
+const MODEL_VERSION = import.meta.env.VITE_ROBOFLOW_MODEL_VERSION || alert("Please set the ROBOFLOW_MODEL_VERSION environment variable");
 
-function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
+function Roboflow({ webcamCanvasRef, webcamRef }) {
   var inferRunning;
-  var model;
 
   const startInfer = () => {
     inferRunning = true;
@@ -21,7 +18,7 @@ function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
         model: PROJECT_URL,
         version: MODEL_VERSION,
         onMetadata: function (m) {
-          console.log("model loaded");
+          console.log("model loaded", m);
         },
       })
       .then((model) => {
@@ -45,12 +42,13 @@ function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
 
       const detections = await model.detect(webcamRef.current.video);
 
-      // console.log("ROBOFLOW MODEL DETECTIONS", detections);
-
       adjustCanvas(clientWidth, clientHeight);
 
-      // var videoCtx = webcamCanvasRef.current.getContext('2d');
-      // drawBoxes(detections, videoCtx);
+      if (import.meta.env.VITE_DEBUG) {
+        console.log("ROBOFLOW MODEL DETECTIONS", detections);
+        var videoCtx = webcamCanvasRef.current.getContext('2d');
+        drawBoxes(detections, videoCtx);
+      }
 
       genGeoPointers(detections);
 
@@ -78,8 +76,10 @@ function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
         temp.confidence = row.confidence;
         row = temp;
       }
-      // TODO: Set confidence threshold from .env
-      if (row.confidence < 0) return;
+
+      if (row.confidence < import.meta.env.VITE_ROBOFLOW_CONFIDENCE_THRESHOLD) return;
+
+      if (temp.class === "base" || temp.class === "pooltable") return; // don't draw base or pooltable boxes
 
       //dimensions
       var x = row.x - row.width / 2;
@@ -87,12 +87,12 @@ function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
       var w = row.width;
       var h = row.height;
 
-      // //centroid
-      // ctx.beginPath();
-      // ctx.arc(row.x, row.y, 5, 0, 2 * Math.PI);
-      // ctx.fillStyle = "blue"
-      // ctx.fill();
-      // console.log(row.x, row.y)
+      //centroid
+      ctx.beginPath();
+      ctx.arc(row.x, row.y, 5, 0, 2 * Math.PI);
+      ctx.fillStyle = "blue"
+      ctx.fill();
+      console.log(row.x, row.y)
 
       //box
       ctx.beginPath();
@@ -101,49 +101,49 @@ function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
       ctx.rect(x, y, w, h);
       ctx.stroke();
 
-      // //shade
-      // ctx.fillStyle = "black";
-      // ctx.globalAlpha = 0.2;
-      // ctx.fillRect(x, y, w, h);
-      // ctx.globalAlpha = 1.0;
+      //shade
+      ctx.fillStyle = "black";
+      ctx.globalAlpha = 0.2;
+      ctx.fillRect(x, y, w, h);
+      ctx.globalAlpha = 1.0;
 
-      // //label
-      // var fontColor = "black";
-      // var fontSize = 12;
-      // ctx.font = `${fontSize}px monospace`;
-      // ctx.textAlign = "center";
-      // var classTxt = row.class;
-      // var confTxt = (row.confidence * 100).toFixed().toString() + "%";
-      // var msgTxt = classTxt + " " + confTxt;
-      // const textHeight = fontSize;
-      // var textWidth = ctx.measureText(msgTxt).width;
+      //label
+      var fontColor = "black";
+      var fontSize = 12;
+      ctx.font = `${fontSize}px monospace`;
+      ctx.textAlign = "center";
+      var classTxt = row.class;
+      var confTxt = (row.confidence * 100).toFixed().toString() + "%";
+      var msgTxt = classTxt + " " + confTxt;
+      const textHeight = fontSize;
+      var textWidth = ctx.measureText(msgTxt).width;
 
-      // if (textHeight <= h && textWidth <= w) {
-      //   ctx.strokeStyle = row.color;
-      //   ctx.fillStyle = row.color;
-      //   ctx.fillRect(
-      //     x - ctx.lineWidth / 2,
-      //     y - textHeight - ctx.lineWidth,
-      //     textWidth + 2,
-      //     textHeight + 1
-      //   );
-      //   ctx.stroke();
-      //   ctx.fillStyle = fontColor;
-      //   ctx.fillText(msgTxt, x + textWidth / 2 + 1, y - 1);
-      // } else {
-      //   textWidth = ctx.measureText(confTxt).width;
-      //   ctx.strokeStyle = row.color;
-      //   ctx.fillStyle = row.color;
-      //   ctx.fillRect(
-      //     x - ctx.lineWidth / 2,
-      //     y - textHeight - ctx.lineWidth,
-      //     textWidth + 2,
-      //     textHeight + 1
-      //   );
-      //   ctx.stroke();
-      //   ctx.fillStyle = fontColor;
-      //   ctx.fillText(confTxt, x + textWidth / 2 + 1, y - 1);
-      // }
+      if (textHeight <= h && textWidth <= w) {
+        ctx.strokeStyle = row.color;
+        ctx.fillStyle = row.color;
+        ctx.fillRect(
+          x - ctx.lineWidth / 2,
+          y - textHeight - ctx.lineWidth,
+          textWidth + 2,
+          textHeight + 1
+        );
+        ctx.stroke();
+        ctx.fillStyle = fontColor;
+        ctx.fillText(msgTxt, x + textWidth / 2 + 1, y - 1);
+      } else {
+        textWidth = ctx.measureText(confTxt).width;
+        ctx.strokeStyle = row.color;
+        ctx.fillStyle = row.color;
+        ctx.fillRect(
+          x - ctx.lineWidth / 2,
+          y - textHeight - ctx.lineWidth,
+          textWidth + 2,
+          textHeight + 1
+        );
+        ctx.stroke();
+        ctx.fillStyle = fontColor;
+        ctx.fillText(confTxt, x + textWidth / 2 + 1, y - 1);
+      }
     });
   };
 
@@ -159,20 +159,22 @@ function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
         row = temp;
       }
 
-      if (row.confidence < 0) return;
+      if (row.confidence < import.meta.env.VITE_ROBOFLOW_CONFIDENCE_THRESHOLD) return;
+
+      if (temp.class === "base" || temp.class === "pooltable") return; // don't trigger pointer event on base or pooltable
 
       // Normalize x and y position using the webcam video size
       const videoWidth = webcamRef.current.video.videoWidth;
       const videoHeight = webcamRef.current.video.videoHeight;
-      console.log("DEBUG RAW POINT", row.x, row.y)
+      if (import.meta.env.VITE_DEBUG) console.log("DEBUG RAW POINT", row.x, row.y)
       const normalized_x = row.x - videoWidth / 2;
       const normalized_y = row.y - videoHeight / 2;
-      console.log("DEBUG NORMALIZED POINT", normalized_x, normalized_y)
+      if (import.meta.env.VITE_DEBUG) console.log("DEBUG NORMALIZED POINT", normalized_x, normalized_y)
 
       // Transform normalized position using the "camera to surface" transformation matrix
       const canvas = webcamCanvasRef.current;
       const matrix = new DOMMatrix(getComputedStyle(canvas).transform);
-      console.log("DEBUG CANVAS MATRIX", matrix);
+      if (import.meta.env.VITE_DEBUG) console.log("DEBUG CANVAS MATRIX", matrix);
       const point = new DOMPoint(normalized_x, normalized_y, 0, 1); // Convert to homogeneous coordinates
       const transformedPoint = matrix.transformPoint(point); // Apply the transformation matrix
 
@@ -191,7 +193,7 @@ function Roboflow({ data, setGridData, webcamCanvasRef, webcamRef, layers }) {
       const appContainerRect = appContainer.getBoundingClientRect();
       const x = (appTransformed_x + appContainerRect.width / 2);
       const y = (appTransformed_y + appContainerRect.height / 2);
-      console.log("DEBUG FINAL POINT", x, y)
+      if (import.meta.env.VITE_DEBUG) console.log("DEBUG FINAL POINT", x, y)
 
       // Set pointer position
       let pointerPosition = {
