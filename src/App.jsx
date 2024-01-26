@@ -1,8 +1,10 @@
+
+import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
 import { useRef, useState, useEffect } from 'react';
 
-import Map from './components/Map.jsx';
+import Map2d from './components/Map.jsx';
 import Map3D from './components/Map3d.jsx';
 import Roboflow from './components/Roboflow.jsx';
 import ProjectionMapping from './components/ProjectionMapping';
@@ -19,7 +21,7 @@ function App() {
   const webcamRef = useRef();
   const webcamCanvasRef = useRef();
   const [calibrated, setCalibrated] = useState(false);
-  const [gridData, setGridData] = useState();
+  const [gridData, setGridData] = useState([]);
 
   // Synchronize gridData changes between tabs using localStorage
   const onStorageUpdate = (e) => {
@@ -30,7 +32,7 @@ function App() {
   };
 
   useEffect(() => {
-    if (gridData === undefined) {
+    if (Object.keys(gridData).length === 0) {
       loadGridData().then(data => {
         setGridData(data);
       });
@@ -43,7 +45,7 @@ function App() {
   }, []);
 
   return (
-    <div className="App" >
+    <div className="App">
       <Routes>
         <Route path="/2d" element={
           <div ref={appWrapperRef} style={{ display: "inline-block" }} >
@@ -56,16 +58,12 @@ function App() {
             />
 
             {calibrated && <Roboflow
-              gridData={gridData}
-              setGridData={setGridData}
               webcamRef={webcamRef}
               webcamCanvasRef={webcamCanvasRef}
-              layers={null}
             />}
 
-            {calibrated && <Map
+            {calibrated && <Map2d
               gridData={gridData}
-              setGridData={setGridData}
             />}
 
           </div>
@@ -74,7 +72,6 @@ function App() {
         <Route path="/3d" element={
           <Map3D
             gridData={gridData}
-            setGridData={setGridData}
           />
         } />
       </Routes >
