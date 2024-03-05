@@ -14,7 +14,7 @@ import Row from 'react-bootstrap/Row';
 import LoadingSpinner from 'react-bootstrap/Spinner';
 
 
-const TRIPS_ENDPOINT_URL = import.meta.env.VITE_TRIPS_ENDPOINT_URL || alert("Please set the TRIPS_ENDPOINT_URL environment variable");
+const TRIPS_ENDPOINT_URL = import.meta.env.VITE_TRIPS_ENDPOINT_URL || alert("Please set the VITE_TRIPS_ENDPOINT_URL environment variable");
 
 // Viewport settings
 const INITIAL_VIEW_STATE = {

@@ -1,9 +1,9 @@
 
 import { useEffect } from 'react';
 
-const PUBLISHABLE_ROBOFLOW_API_KEY = import.meta.env.VITE_PUBLISHABLE_ROBOFLOW_API_KEY || alert("Please set the PUBLISHABLE_ROBOFLOW_API_KEY environment variable in");
-const PROJECT_URL = import.meta.env.VITE_ROBOFLOW_PROJECT_URL || alert("Please set the ROBOFLOW_PROJECT_URL environment variable");
-const MODEL_VERSION = import.meta.env.VITE_ROBOFLOW_MODEL_VERSION || alert("Please set the ROBOFLOW_MODEL_VERSION environment variable");
+const PUBLISHABLE_ROBOFLOW_API_KEY = import.meta.env.VITE_PUBLISHABLE_ROBOFLOW_API_KEY || alert("Please set the VITE_PUBLISHABLE_ROBOFLOW_API_KEY environment variable in");
+const PROJECT_URL = import.meta.env.VITE_ROBOFLOW_PROJECT_URL || alert("Please set the VITE_ROBOFLOW_PROJECT_URL environment variable");
+const MODEL_VERSION = import.meta.env.VITE_ROBOFLOW_MODEL_VERSION || alert("Please set the VITE_ROBOFLOW_MODEL_VERSION environment variable");
 
 function Roboflow({ webcamCanvasRef, webcamRef }) {
   var inferRunning;
